@@ -2,8 +2,11 @@
 (local graphics (require :graphics))
 (local {: rgba : hexcolor} (require :color))
 (local tiny (require :lib.tiny))
+(local {: world} (require :ecs))
+(local timeline (require :timeline))
 (local {: state : reset-state} (require :state))
 (local {: new-entity} (require :helpers))
+(import-macros {: fire-timeline} :macros)
 
 (local Unit (require :unit))
 (local {: Box2dRectangle} (require :wall))
@@ -14,10 +17,6 @@
 (local arena-margin (vec 100 70))
 (local arena-offset (vec 0 -40))
 (local arena-size (- stage-size (* arena-margin 2)))
-
-
-;; ECS setup
-(local world (tiny.world))
 
 ;; init-system handles calling init on entities with a dt
 (local init-system (tiny.processingSystem))
@@ -36,6 +35,15 @@
   (e:update dt))
 
 (tiny.addSystem world update-system)
+
+(local timeline-system (tiny.processingSystem))
+(set timeline-system.filter (tiny.requireAll :timeline))
+
+(λ timeline-system.process [self e dt]
+  (when (e.timeline:update dt)
+    (tiny.removeEntity world e)))
+
+(tiny.addSystem world timeline-system)
 
 ;; draw system handles drawing in order of highest-to-lowest z-index
 (local draw-system (tiny.processingSystem))
@@ -68,7 +76,7 @@
   (love.graphics.setCanvas arena-canvas)
   (love.graphics.push)
   (love.graphics.origin)
-  (love.graphics.setColor 0 0 0 1)
+  (love.graphics.setColor 0 0 0 0.05)
   (love.graphics.rectangle :fill 0 0 arena-size.x arena-size.y)
   (love.graphics.setColor 1 1 1 1))
 
@@ -105,8 +113,8 @@
   (graphics.rectangle (vec 0 0) stage-size (hexcolor :212121ff)))
 
 (λ main []
-  (set-win-size)
   (reset-state)
+  (set-win-size)
 
   ;; Add global drawer
   (tiny.addEntity world
@@ -119,19 +127,32 @@
                                          arena-margin.x
                                          arena-margin.y 0 1 1))})
 
-  (tiny.addEntity world (new-entity Box2dRectangle
-                                    {:pos (vec (/ arena-size.x 2) arena-size.y)
-                                     :size (vec arena-size.x 10)}))
-  (tiny.addEntity world (new-entity Box2dRectangle
-                                    {:pos (vec (/ arena-size.x 2) 0)
-                                     :size (vec arena-size.x 10)}))
-  (tiny.addEntity world (new-entity Box2dRectangle
-                                    {:pos (vec 0 (/ arena-size.y 2))
-                                     :size (vec 10 arena-size.y)}))
-  (tiny.addEntity world (new-entity Box2dRectangle
-                                    {:pos (vec arena-size.x (/ arena-size.y 2))
-                                     :size (vec 10 arena-size.y)}))
-  (tiny.addEntity world (new-entity Unit)))
+  ;; Add physics world stepper
+  (tiny.addEntity world
+                  {:update (λ [self dt]
+                             (state.pworld:update dt))})
+
+  (tiny.add world
+    (new-entity Box2dRectangle
+                {:pos (vec (/ arena-size.x 2) arena-size.y)
+                 :size (vec arena-size.x 10)})
+    (new-entity Box2dRectangle
+                {:pos (vec (/ arena-size.x 2) 0)
+                 :size (vec arena-size.x 10)})
+    (new-entity Box2dRectangle
+                {:pos (vec 0 (/ arena-size.y 2))
+                 :size (vec 10 arena-size.y)})
+    (new-entity Box2dRectangle
+                {:pos (vec arena-size.x (/ arena-size.y 2))
+                 :size (vec 10 arena-size.y)}))
+
+  (fire-timeline
+    (for [i 1 100]
+      (coroutine.yield)
+      (tiny.addEntity world
+        (new-entity Unit
+                    {:pos (vec (love.math.random 100 200)
+                               (love.math.random 100 200))})))))
 
 (main)
 
