@@ -1,7 +1,5 @@
 (local fennel (require :lib.fennel))
 (local repl (require :lib.stdio))
-(local canvas (let [(w h) (love.window.getMode)]
-                (love.graphics.newCanvas w h)))
 
 (var scale 1)
 
@@ -16,29 +14,40 @@
 
 (fn love.load [args]
   (set-mode :mode-intro)
-  (canvas:setFilter "nearest" "nearest")
   (when (~= :web (. args 1)) (repl.start)))
 
 (fn safely [f]
   (xpcall f #(set-mode :error-mode mode-name $ (fennel.traceback))))
 
-(fn love.draw []
-  ;; the canvas allows you to get sharp pixel-art style scaling; if you
-  ;; don't want that, just skip that and call mode.draw directly.
-  (love.graphics.setCanvas canvas)
-  (love.graphics.clear)
-  (love.graphics.setColor 1 1 1)
-  (safely mode.draw)
-  (love.graphics.setCanvas)
-  (love.graphics.setColor 1 1 1)
-  (love.graphics.draw canvas 0 0 0 scale scale))
+;; (fn love.draw []
+;;   ;; the canvas allows you to get sharp pixel-art style scaling; if you
+;;   ;; don't want that, just skip that and call mode.draw directly.
+;;   (love.graphics.setCanvas canvas)
+;;   (love.graphics.clear)
+;;   (love.graphics.setColor 1 1 1)
+;;   (safely mode.draw)
+;;   (love.graphics.setCanvas)
+;;   (love.graphics.setColor 1 1 1)
+;;   (love.graphics.draw canvas 0 0 0 scale scale))
 
-(fn love.update [dt]
+
+;; Hacks because im too lazy to dig up the code for custom love
+;; event plumbing and I need game logic to tick in the draw
+;; phase because everything is in ECS... :)
+(var DT 0)
+(fn love.update [dt] (set DT dt))
+
+(fn love.draw []
+  (love.graphics.setColor 1 1 1)
   (when mode.update
-    (safely #(mode.update dt set-mode))))
+    (safely #(mode.update DT set-mode))))
 
 (fn love.keypressed [key]
   (if (and (love.keyboard.isDown "lctrl" "rctrl" "capslock") (= key "q"))
       (love.event.quit)
       ;; add what each keypress should do in each mode
       (safely #(mode.keypressed key set-mode))))
+
+(fn love.resize [w h]
+  (when (and mode mode.resize)
+    (safely #(mode.resize w h))))

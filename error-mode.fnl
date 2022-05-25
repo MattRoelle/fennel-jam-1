@@ -10,7 +10,7 @@
 (local explanation "Press escape to quit.
 Press space to return to the previous mode after reloading in the repl.")
 
-(fn draw []
+(fn update []
   (love.graphics.clear 0.34 0.61 0.86)
   (love.graphics.setColor 0.9 0.9 0.9)
   (love.graphics.print state.msg 10 10)
@@ -27,4 +27,4 @@ Press space to return to the previous mode after reloading in the repl.")
   (print traceback)
   (set state {: old-mode : msg : traceback}))
 
-{: draw : keypressed : activate}
+{: update : keypressed : activate}
