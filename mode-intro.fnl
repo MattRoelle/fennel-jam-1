@@ -3,20 +3,32 @@
 (local {: rgba : hexcolor} (require :color))
 (local tiny (require :lib.tiny))
 (local {: state : reset-state} (require :state))
+(local {: new-entity} (require :helpers))
+
 (local Unit (require :unit))
+(local {: Box2dRectangle} (require :wall))
 
 ;; Constants
 (local stage-size (vec 720 450))
 (local center-stage (/ stage-size 2))
-(local arena-margin (vec 40 70))
-(local arena-offset (vec 0 -32))
+(local arena-margin (vec 100 70))
+(local arena-offset (vec 0 -40))
 (local arena-size (- stage-size (* arena-margin 2)))
 
 
 ;; ECS setup
 (local world (tiny.world))
 
-;; update-system handles calling :update on entities with a dt
+;; init-system handles calling init on entities with a dt
+(local init-system (tiny.processingSystem))
+(set init-system.filter (tiny.requireAll :init))
+
+(λ init-system.onAdd [self e]
+  (e:init))
+
+(tiny.addSystem world init-system)
+
+;; update-system handles calling update on entities with a dt
 (local update-system (tiny.processingSystem))
 (set update-system.filter (tiny.requireAll :update))
 
@@ -88,13 +100,12 @@
           (set state.screen-offset (vec (* 0.5 (- window-size.x (* s stage-size.x))) 0))))
     (set state.screen-scale (vec s s))))
     
-(set-win-size)
-
 ;; Main
 (λ draw-bg []
   (graphics.rectangle (vec 0 0) stage-size (hexcolor :212121ff)))
 
 (λ main []
+  (set-win-size)
   (reset-state)
 
   ;; Add global drawer
@@ -108,7 +119,19 @@
                                          arena-margin.x
                                          arena-margin.y 0 1 1))})
 
-  (tiny.addEntity world (Unit.new)))
+  (tiny.addEntity world (new-entity Box2dRectangle
+                                    {:pos (vec (/ arena-size.x 2) arena-size.y)
+                                     :size (vec arena-size.x 10)}))
+  (tiny.addEntity world (new-entity Box2dRectangle
+                                    {:pos (vec (/ arena-size.x 2) 0)
+                                     :size (vec arena-size.x 10)}))
+  (tiny.addEntity world (new-entity Box2dRectangle
+                                    {:pos (vec 0 (/ arena-size.y 2))
+                                     :size (vec 10 arena-size.y)}))
+  (tiny.addEntity world (new-entity Box2dRectangle
+                                    {:pos (vec arena-size.x (/ arena-size.y 2))
+                                     :size (vec 10 arena-size.y)}))
+  (tiny.addEntity world (new-entity Unit)))
 
 (main)
 

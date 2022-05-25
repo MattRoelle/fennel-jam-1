@@ -40,7 +40,8 @@
 (fn love.draw []
   (love.graphics.setColor 1 1 1)
   (when mode.update
-    (safely #(mode.update DT set-mode))))
+    (safely #(mode.update DT set-mode)))
+  (love.graphics.setCanvas))
 
 (fn love.keypressed [key]
   (if (and (love.keyboard.isDown "lctrl" "rctrl" "capslock") (= key "q"))

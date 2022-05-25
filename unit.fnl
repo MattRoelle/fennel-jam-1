@@ -7,15 +7,10 @@
 (set Unit.__index Unit)
 
 (λ Unit.arena-draw [self]
-  (graphics.circle self.pos 8 (rgba 0 1 1 1)))
+  (graphics.circle self.pos 4 (rgba 0 1 1 1)))
 
 (λ Unit.update [self dt])
 
-(λ Unit.new [?o]
-  (let [defaults {:z-index 10
-                  :pos (vec 32 32)}
-        tbl (lume.merge defaults (or ?o {}))
-        inst (setmetatable tbl Unit)]
-    inst))
+(set Unit.__defaults {:z-index 10 :pos (vec 32 32)})
 
 Unit
