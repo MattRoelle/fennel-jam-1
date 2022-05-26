@@ -48,6 +48,28 @@
         hovering? (rect:contains-point? mpos)]
     (values mouse-down? hovering?)))
 
+(λ button [?state context props]
+  "An immediate mode button"
+  (let [bstate (or ?state {:hover false})
+        (mouse-down? in-range?) (mouse-interaction context)]
+    (set bstate.hover in-range?)
+    (when (and props.on-click in-range? mouse-down?)
+      (props.on-click))
+    (set bstate.mouse-down? mouse-down?)
+    (graphics.rectangle context.position context.size
+                        (if bstate.hover
+                            (rgba 0.4 0.4 0.4 1)
+                            (rgba 0.2 0.2 0.2 1)))
+    (love.graphics.rectangle :fill
+                            (+ context.position.x props.padding.x)
+                            (+ context.position.y props.padding.y)
+                            (- context.size.x (* props.padding.x 2))
+                            (- context.size.y (* props.padding.y 2)))
+    (love.graphics.setColor 1 1 1 1)
+    (love.graphics.print (or props.label "na") context.position.x context.position.y)
+    bstate))
+
+
 (λ shop-button [?state context props]
   "An immediate mode button"
   (let [bstate (or ?state {:hover false})
@@ -77,4 +99,5 @@
 {: text
  : image
  : view
- : shop-button}
+ : shop-button
+ : button}

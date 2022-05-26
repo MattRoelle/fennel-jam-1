@@ -13,7 +13,7 @@
 (local state (require :state))
 (local {: layout : get-layout-rect} (require :imgui))
 (local aabb (require :aabb))
-(local {: text : view : image : shop-button} (require :imm))
+(local {: text : view : image : shop-button : button} (require :imm))
 (local {: stage-size : center-stage : arena-margin : arena-offset : arena-size} (require :constants))
 (local {: new-entity : get-mouse-position} (require :helpers))
 (local {: Unit : Enemy} (require :unit))
@@ -21,25 +21,27 @@
 
 (λ unit-list []
   [view {:display :stack
-         :direction :right
          :position (vec (- stage-size.x arena-margin.x) 0)
          :size (vec arena-margin.x stage-size.y)
          :padding (vec 4 4)}
    [[view {:color (rgba 0.5 0.3 0.3 1)
            :display :stack
+           :direction :down
            :size (vec 800 100)}
      (when (> state.state.unit-count 0)
        (icollect [k grp (pairs state.state.units)]
          (let [keys (lume.keys grp)]
            (when (> (length keys) 0)
-             [view {:size (vec 100 100)
+             [view {:size (vec 100 40)
                     :color (rgba 0.1 0.1 0.1 1)
                     :display :flex
                     :flex-direction :column}
               [[text {:text k
                       :color (rgba 1 1 1 1)}]
                [text {:text (length keys)
-                      :color (rgba 1 1 1 1)}]]]))))]]])
+                      :color (rgba 1 1 1 1)}]
+               (imm-stateful button state.state.units [k :bstate]
+                             {:label :Promote})]]))))]]])
 
 (λ shop-row []
   [view {:display :stack
@@ -53,8 +55,7 @@
             :display :flex
             :size (vec 100 100)}
       [(imm-stateful shop-button
-                     state.state.shop-row
-                     [ix :bstate]
+                     state.state.shop-row [ix]
                      {:label :test})]])])
 
 (local Director {})
@@ -69,9 +70,10 @@
 
 (λ Director.roll-shop [self]
   (set state.state.shop-row [])
-  (for [i 1 3]
-    (table.insert state.state.shop-row
-                  {:cost 3 :group [:warrior :warrior :warrior]})))
+  (table.insert state.state.shop-row
+                {:cost 3 :group [:warrior :warrior :warrior]})
+  (table.insert state.state.shop-row
+                {:cost 3 :group [:shooter :shooter :shooter]}))
 
 (λ Director.arena-draw [self]
   (when state.active-shop-btn
@@ -101,7 +103,7 @@
              (input:mouse-released?)
              (: (aabb (vec 0 0) arena-size) :contains-point?
                 state.state.arena-mpos))
-    (self:spawn-group [:warrior :warrior :warrior]))
+    (self:spawn-group state.state.active-shop-btn.group))
     
   (let [mpos (- (get-mouse-position) arena-margin
                 (- arena-offset (/ state.state.screen-offset state.state.screen-scale.x)))]

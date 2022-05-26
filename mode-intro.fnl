@@ -39,13 +39,13 @@
   (tset state.state :teams e.team e.id e)
   (when e.unit-type
     (set state.state.unit-count (+ state.state.unit-count 1))
-    (tset state.state.units e.unit-type e)))
+    (tset state.state.units e.unit-type e.id e)))
 
 (λ index-system.onRemove [self e]
   (tset state.state :teams e.team e.id nil)
   (when e.unit-type
     (set state.state.unit-count (- state.state.unit-count 1))
-    (tset state.state.units e.unit-type nil)))
+    (tset state.state.units e.unit-type e.id nil)))
 
 (tiny.addSystem ecs.world index-system)
 

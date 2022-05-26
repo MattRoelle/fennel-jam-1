@@ -5,18 +5,17 @@
 
 (local module {:state {}})
 
-(local initial-state
-       {:screen-scale (vec 1 1)
-        :screen-offset (vec 0 0)
-        :unit-count 0
-        :units
-        (collect [k _ (pairs data.unit-types)]
-          (values k []))
-        :teams {:player {} :enemy {}}
-        :arena-mpos (vec 0 0)
-        :shop-row []})
-
 (λ module.reset-state []
+  (local initial-state
+         {:screen-scale (vec 1 1)
+          :screen-offset (vec 0 0)
+          :unit-count 0
+          :units
+          (collect [k _ (pairs data.unit-types)]
+            (values k []))
+          :teams {:player {} :enemy {}}
+          :arena-mpos (vec 0 0)
+          :shop-row []})
   (when module.state.pworld
     (module.state.pworld:destroy))
   (each [k v (pairs module.state)]
