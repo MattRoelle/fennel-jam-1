@@ -14,7 +14,7 @@
           (values k []))
         :teams {:player {} :enemy {}}
         :arena-mpos (vec 0 0)
-        :shop-row [{} {} {}]})
+        :shop-row []})
 
 (λ module.reset-state []
   (when module.state.pworld

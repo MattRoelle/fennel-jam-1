@@ -38,14 +38,12 @@
   (set e.id (get-id))
   (tset state.state :teams e.team e.id e)
   (when e.unit-type
-    (print :added-unit)
     (set state.state.unit-count (+ state.state.unit-count 1))
     (tset state.state.units e.unit-type e)))
 
 (λ index-system.onRemove [self e]
   (tset state.state :teams e.team e.id nil)
   (when e.unit-type
-    (print :removed-unit)
     (set state.state.unit-count (- state.state.unit-count 1))
     (tset state.state.units e.unit-type nil)))
 

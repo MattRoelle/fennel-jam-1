@@ -5,16 +5,18 @@
 (local graphics (require :graphics))
 (local {: new-entity : get-mouse-position} (require :helpers))
 (local aabb (require :aabb))
+(local input (require :input))
+(local assets (require :assets))
 
 (λ text [context props]
   "Basic text component"
   (let [rect (get-layout-rect context)
         alignment (or props.align :center)]
     (when props.color
-      (love.graphics.setColor (unpack (props.color:serialize)))
-      (love.graphics.print (or props.text "nil")
-                           (. rect alignment :x)
-                           (. rect alignment :y)))))
+      (graphics.print-centered (or props.text "nil")
+                               assets.f16
+                               (. rect alignment)
+                               props.color))))
 
 (λ image [context props]
   "Basic image component"
@@ -41,7 +43,7 @@
 (λ mouse-interaction [context]
   "Returns values indicating mouse-down? and hovering? state"
   (let [mpos (get-mouse-position)
-        mouse-down? (love.mouse.isDown 1)
+        mouse-down? (input:mouse-released?)
         rect (aabb context.position context.size)
         hovering? (rect:contains-point? mpos)]
     (values mouse-down? hovering?)))
@@ -52,16 +54,15 @@
         (mouse-down? in-range?) (mouse-interaction context)]
     (set bstate.hover in-range?)
     (when (and in-range? mouse-down?)
-      (print :clicking)
       (set state.state.active-shop-btn
            (if (= state.state.active-shop-btn bstate) nil bstate)))
       ;(props.on-click))
     (set bstate.mouse-down? mouse-down?)
     (graphics.rectangle context.position context.size
-                        (if bstate.hover
-                            (rgba 0.4 0.4 0.4 1)
-                            (= state.state.active-shop-btn bstate)
+                        (if (= state.state.active-shop-btn bstate)
                             (rgba 0.7 0.7 0.7 1)
+                            bstate.hover
+                            (rgba 0.4 0.4 0.4 1)
                             (rgba 0.2 0.2 0.2 1)))
     (love.graphics.rectangle :fill
                             (+ context.position.x props.padding.x)

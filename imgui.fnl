@@ -20,9 +20,12 @@
       :flex-direction :row}
      (or ?tbl {})))
 
+(fn clean-children [?children]
+  (if (or (not ?children) (= ?children :nil)) [] ?children))
+
 (λ render-display-absolute [render-f props ?children]
   (let [context (peek-layout-stack)]
-    (each [_ itm (ipairs (or ?children []))]
+    (each [_ itm (ipairs (clean-children ?children))]
       (when itm
         (let [[cf ?cp ?cc] itm]
           (push-layout-stack
@@ -34,7 +37,8 @@
                                  (. (get-layout-rect context) ?cp.position)
                                  ?cp.position))
                            (vec 0 0)))})
-          (render-f cf ?cp ?cc))))))
+          (render-f cf ?cp ?cc)
+          (pop-layout-stack))))))
 
 (λ render-display-flex [render-f props ?children]
   (let [root-context (peek-layout-stack)

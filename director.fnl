@@ -1,4 +1,4 @@
-(import-macros {: fire-timeline} :macros)
+(import-macros {: fire-timeline : imm-stateful} :macros)
 
 (local timeline (require :timeline))
 (local tiny (require :lib.tiny))
@@ -26,14 +26,20 @@
          :size (vec arena-margin.x stage-size.y)
          :padding (vec 4 4)}
    [[view {:color (rgba 0.5 0.3 0.3 1)
-           :padding (vec 10 10)
-           :display :flex
+           :display :stack
            :size (vec 800 100)}
      (when (> state.state.unit-count 0)
        (icollect [k grp (pairs state.state.units)]
-         (when (> (length grp) 0)
-           [view {:size (vec 100 100)
-                  :color (rgba 0 1 0 1)}])))]]])
+         (let [keys (lume.keys grp)]
+           (when (> (length keys) 0)
+             [view {:size (vec 100 100)
+                    :color (rgba 0.1 0.1 0.1 1)
+                    :display :flex
+                    :flex-direction :column}
+              [[text {:text k
+                      :color (rgba 1 1 1 1)}]
+               [text {:text (length keys)
+                      :color (rgba 1 1 1 1)}]]]))))]]])
 
 (λ shop-row []
   [view {:display :stack
@@ -41,16 +47,15 @@
          :position (vec 0 (- stage-size.y 112))
          :padding (vec 8 0)
          :size (vec stage-size.x 110)}
-   [[view {:color (rgba 0.5 0.3 0.3 1)
-           :padding (vec 10 10)
-           :display :flex
-           :size (vec 100 100)}
-      [[#(tset state.state.shop-row 1 :button (shop-button (. state.state.shop-row 1 :button) $...)) {:label :test}]]]
-    [view {:color (rgba 0.5 0.3 0.3 1)
-           :padding (vec 10 10)
-           :display :flex}
-          :size (vec 100 100)
-      [[#(tset state.state.shop-row 2 :button (shop-button (. state.state.shop-row 2 :button) $...)) {:label :test}]]]]])
+   (icollect [ix btn (ipairs state.state.shop-row)]
+     [view {:color (rgba 0.5 0.3 0.3 1)
+            :padding (vec 10 10)
+            :display :flex
+            :size (vec 100 100)}
+      [(imm-stateful shop-button
+                     state.state.shop-row
+                     [ix :bstate]
+                     {:label :test})]])])
 
 (local Director {})
 (set Director.__index Director)
@@ -59,8 +64,14 @@
   (fire-timeline
     (timeline.wait 0.5)
     (set state.state.arena-mpos (vec 100 100))
-    (self:spawn-group [:warrior :warrior :warrior])))
+    (self:spawn-group [:warrior :warrior :warrior]))
+  (self:roll-shop))
 
+(λ Director.roll-shop [self]
+  (set state.state.shop-row [])
+  (for [i 1 3]
+    (table.insert state.state.shop-row
+                  {:cost 3 :group [:warrior :warrior :warrior]})))
 
 (λ Director.arena-draw [self]
   (when state.active-shop-btn
