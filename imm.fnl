@@ -1,4 +1,4 @@
-(local {: state} (require :state))
+(local state (require :state))
 (local {: layout : get-layout-rect} (require :imgui))
 (local {: vec : polar-vec2} (require :vector))
 (local {: rgba : hexcolor} (require :color))
@@ -51,17 +51,16 @@
   (let [bstate (or ?state {:hover false})
         (mouse-down? in-range?) (mouse-interaction context)]
     (set bstate.hover in-range?)
-    (when (and in-range?
-               (not state.mouse-down?)
-               mouse-down?)
-      (set state.active-shop-btn
-           (if (= state.active-shop-btn bstate) nil bstate)))
+    (when (and in-range? mouse-down?)
+      (print :clicking)
+      (set state.state.active-shop-btn
+           (if (= state.state.active-shop-btn bstate) nil bstate)))
       ;(props.on-click))
     (set bstate.mouse-down? mouse-down?)
     (graphics.rectangle context.position context.size
                         (if bstate.hover
                             (rgba 0.4 0.4 0.4 1)
-                            (= state.active-shop-btn bstate)
+                            (= state.state.active-shop-btn bstate)
                             (rgba 0.7 0.7 0.7 1)
                             (rgba 0.2 0.2 0.2 1)))
     (love.graphics.rectangle :fill

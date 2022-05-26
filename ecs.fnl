@@ -1,5 +1,12 @@
 (local tiny (require :lib.tiny))
 
-(local world (tiny.world))
+(local module {})
 
-{: world}
+(λ module.reset-ecs []
+  (set module.world (tiny.world)))
+
+(module.reset-ecs)
+
+module
+
+

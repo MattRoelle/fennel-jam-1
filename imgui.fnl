@@ -45,7 +45,8 @@
                  :row (vec (- width) 0)
                  :column (vec 0 (- height)))]
     (var position (+ root-context.position offset))
-    (each [_ itm (ipairs (or ?children []))]
+    (each [_ itm (ipairs (if (or (not ?children) (not= :table (type ?children)))
+                             [] ?children))]
       (when itm
         (let [[cf ?cp ?cc] itm
               context (peek-layout-stack)

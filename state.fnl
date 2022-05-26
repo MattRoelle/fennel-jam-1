@@ -1,23 +1,30 @@
 (local {: vec} (require :vector))
 (local {: world} (require :ecs))
 (local tiny (require :lib.tiny))
+(local data (require :data))
 
-(var state {})
+(local module {:state {}})
+
 (local initial-state
        {:screen-scale (vec 1 1)
         :screen-offset (vec 0 0)
+        :unit-count 0
+        :units
+        (collect [k _ (pairs data.unit-types)]
+          (values k []))
+        :teams {:player {} :enemy {}}
         :arena-mpos (vec 0 0)
         :shop-row [{} {} {}]})
 
-(λ reset-state []
-  (when state.pworld
-    (state.pworld:destroy))
-  (each [k v (pairs state)]
-    (tset state k nil))
+(λ module.reset-state []
+  (when module.state.pworld
+    (module.state.pworld:destroy))
+  (each [k v (pairs module.state)]
+    (tset module.state k nil))
   (love.physics.setMeter 32)
-  (set state.pworld (love.physics.newWorld 0 0 true))
+  (set module.state.pworld (love.physics.newWorld 0 0 true))
   (each [k v (pairs initial-state)]
-    (tset state k 
+    (tset module.state k 
           (let [initial-state-v (. initial-state k)
                 v-type (type v)]
             (if (= :table v-type)
@@ -26,4 +33,6 @@
                   (lume.clone initial-state-v))
                 initial-state-v)))))
 
-{: state : reset-state}
+(module.reset-state)
+
+module

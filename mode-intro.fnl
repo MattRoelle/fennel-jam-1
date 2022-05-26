@@ -4,22 +4,18 @@
 (local {: vec : polar-vec2} (require :vector))
 (local {: rgba : hexcolor} (require :color))
 (local tiny (require :lib.tiny))
-(local {: world} (require :ecs))
+(local ecs (require :ecs))
 (local timeline (require :timeline))
-(local {: state : reset-state} (require :state))
+(local state (require :state))
 (local {: new-entity : get-mouse-position} (require :helpers))
 (local aabb (require :aabb))
 (local Director (require :director))
-(local Unit (require :unit))
 (local {: Box2dRectangle} (require :wall))
 
 (local {: stage-size : center-stage : arena-margin : arena-offset : arena-size} (require :constants))
 
-;; Constants
-
-;; Reset ECS 
-(tiny.clearEntities world)
-(tiny.clearSystems world)
+(state.reset-state)
+(ecs.reset-ecs)
 
 ;; init-system handles calling init on entities with a dt
 (local init-system (tiny.processingSystem))
@@ -28,7 +24,32 @@
 (λ init-system.onAdd [self e]
   (e:init))
 
-(tiny.addSystem world init-system)
+(tiny.addSystem ecs.world init-system)
+
+;; index-system handles sorting player/enemy units into easily accessible tables
+;; it also adds a unique integer id to each entity
+(local index-system (tiny.processingSystem))
+(set index-system.filter (tiny.requireAll :team))
+
+(var _id 0)
+(fn get-id [] (set _id (+ _id 1)) _id)
+
+(λ index-system.onAdd [self e]
+  (set e.id (get-id))
+  (tset state.state :teams e.team e.id e)
+  (when e.unit-type
+    (print :added-unit)
+    (set state.state.unit-count (+ state.state.unit-count 1))
+    (tset state.state.units e.unit-type e)))
+
+(λ index-system.onRemove [self e]
+  (tset state.state :teams e.team e.id nil)
+  (when e.unit-type
+    (print :removed-unit)
+    (set state.state.unit-count (- state.state.unit-count 1))
+    (tset state.state.units e.unit-type nil)))
+
+(tiny.addSystem ecs.world index-system)
 
 ;; update-system handles calling update on entities with a dt
 (local update-system (tiny.processingSystem))
@@ -37,16 +58,16 @@
 (λ update-system.process [self e dt]
   (e:update dt))
 
-(tiny.addSystem world update-system)
+(tiny.addSystem ecs.world update-system)
 
 (local timeline-system (tiny.processingSystem))
 (set timeline-system.filter (tiny.requireAll :timeline))
 
 (λ timeline-system.process [self e dt]
   (when (e.timeline:update dt)
-    (tiny.removeEntity world e)))
+    (tiny.removeEntity ecs.world e)))
 
-(tiny.addSystem world timeline-system)
+(tiny.addSystem ecs.world timeline-system)
 
 ;; draw system handles drawing in order of highest-to-lowest z-index
 (local draw-system (tiny.sortedProcessingSystem))
@@ -54,7 +75,7 @@
 
 (λ draw-system.preProcess [self dt]
   (love.graphics.push)
-  (love.graphics.scale state.screen-scale.x state.screen-scale.y))
+  (love.graphics.scale state.state.screen-scale.x state.state.screen-scale.y))
   
 (λ draw-system.process [self e dt]
   (e:draw))
@@ -65,7 +86,7 @@
 (λ draw-system.compare [self e1 e2]
   (< e1.z-index e2.z-index))
   
-(tiny.addSystem world draw-system)
+(tiny.addSystem ecs.world draw-system)
 
 ;; arena-draw system handles drawing in order of highest-to-lowest z-index
 ;; draws to arena canvas
@@ -93,7 +114,7 @@
 (λ arena-draw-system.compare [self e1 e2]
   (> e1.z-index e2.z-index))
   
-(tiny.addSystem world arena-draw-system)
+(tiny.addSystem ecs.world arena-draw-system)
 
 ;; Screen scaling
 (var window-size (vec (love.graphics.getWidth)
@@ -107,20 +128,19 @@
         s (math.min sx sy)]
     (when (not= sx sy)
       (if (= s sx)
-          (set state.screen-offset (vec 0 (* 0.5 (- window-size.y (* s stage-size.y)))))
-          (set state.screen-offset (vec (* 0.5 (- window-size.x (* s stage-size.x))) 0))))
-    (set state.screen-scale (vec s s))))
+          (set state.state.screen-offset (vec 0 (* 0.5 (- window-size.y (* s stage-size.y)))))
+          (set state.state.screen-offset (vec (* 0.5 (- window-size.x (* s stage-size.x))) 0))))
+    (set state.state.screen-scale (vec s s))))
     
 ;; Main
 (λ draw-bg []
   (graphics.rectangle (vec 0 0) stage-size (hexcolor :212121ff)))
 
 (λ main []
-  (reset-state)
   (set-win-size)
 
   ;; Add global drawer
-  (tiny.addEntity world
+  (tiny.addEntity ecs.world
                   {:z-index 100
                    :draw
                    (λ self []
@@ -132,10 +152,11 @@
                                          0 1 1))})
 
   ;; Add director 
-  (set state.director (new-entity Director))
-  (tiny.addEntity world state.director)
+  (set state.state.director (new-entity Director))
+  (tiny.addEntity ecs.world state.state.director)
 
-  (tiny.add world
+  ;; Add walls
+  (tiny.add ecs.world
     (new-entity Box2dRectangle
                 {:pos (vec (/ arena-size.x 2) arena-size.y)
                  :size (vec arena-size.x 10)})
@@ -149,21 +170,11 @@
                 {:pos (vec arena-size.x (/ arena-size.y 2))
                  :size (vec 10 arena-size.y)})))
 
-  ;; (fire-timeline
-  ;;   (for [i 1 20]
-  ;;     (timeline.wait 0.05)
-  ;;     (for [i 1 6]
-  ;;       (tiny.addEntity world
-  ;;         (new-entity Unit
-  ;;                     {:pos (vec (love.math.random 100 200)
-  ;;                                (love.math.random 100 200))}))))))
-
 (main)
-(tiny.refresh world)
 
 {:update
  (fn update [dt set-mode]
-   (tiny.update world dt))
+   (tiny.update ecs.world dt))
  :keypressed (fn keypressed [key set-mode])
  :resize set-win-size}
                  ;(love.event.quit))}
