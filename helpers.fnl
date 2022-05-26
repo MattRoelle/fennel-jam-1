@@ -1,10 +1,14 @@
 (local {: vec} (require :vector))
 (local {: state} (require :state))
 
+(var _id 0)
+(fn get-id [] (set _id (+ _id 1)) _id)
+
 (λ new-entity [typ ?o]
   (let [tbl (lume.merge (or typ.__defaults {})
                         (or ?o {}))
         inst (setmetatable tbl typ)]
+    (set inst.id (tostring (get-id)))
     inst))
 
 (λ get-mouse-position []
@@ -13,4 +17,6 @@
     ret))
 
 {: new-entity
- : get-mouse-position}
+ : get-mouse-position
+ : get-id}
+

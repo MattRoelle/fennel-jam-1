@@ -1,4 +1,4 @@
-(import-macros {: fire-timeline : imm-stateful} :macros)
+(import-macros {: fire-timeline : imm-stateful : with-entities} :macros)
 
 (local timeline (require :timeline))
 (local tiny (require :lib.tiny))
@@ -7,7 +7,7 @@
 (local graphics (require :graphics))
 (local lume (require :lib.lume))
 (local input (require :input))
-(local {: new-entity} (require :helpers))
+(local {: new-entity : get-id} (require :helpers))
 (local {: Box2dCircle} (require :wall))
 (local ecs (require :ecs))
 (local state (require :state))
@@ -18,10 +18,11 @@
 (local {: new-entity : get-mouse-position} (require :helpers))
 (local {: Unit : Enemy} (require :unit))
 (local data (require :data))
+(local aseprite (require :aseprite))
 
 (λ unit-list []
   [view {:display :stack
-         :position (vec (- stage-size.x arena-margin.x) 0)
+         :position (vec (- stage-size.x arena-margin.x) (/ arena-margin.y 2))
          :size (vec arena-margin.x stage-size.y)
          :padding (vec 4 4)}
    [[view {:color (rgba 0.5 0.3 0.3 1)
@@ -61,12 +62,50 @@
 (local Director {})
 (set Director.__index Director)
 
+(λ Director.attack-bump [self ea eb]
+  (ea:flash)
+  (eb:flash)
+  (set ea.hp (- ea.hp 5))
+  (set eb.hp (- eb.hp 5))
+  (self:screen-shake))
+
+;; box2d collision callbacks
+(λ Director.begin-contact [self a b col]
+  (let [ea (state.get-entity-by-id (a:getUserData))
+        eb (state.get-entity-by-id (b:getUserData))]
+    (when (and ea eb ea.team eb.team (not= ea.team eb.team))
+      (self:attack-bump ea eb))))
+
+(λ Director.end-contact [self a b col])
+(λ Director.pre-solve [self a b col])
+(λ Director.post-solve [self a b col])
+
 (λ Director.init [self]
   (fire-timeline
     (timeline.wait 0.5)
     (set state.state.arena-mpos (vec 100 100))
+    (self:spawn-enemy-group (vec 180 100) [:basic :basic])
     (self:spawn-group [:warrior :warrior :warrior]))
-  (self:roll-shop))
+  (self:roll-shop)
+  (state.state.pworld:setCallbacks
+    #(self:begin-contact $...)
+    #(self:end-contact $...)
+    #(self:pre-solve $...)
+    #(self:post-solve $...)))
+
+(λ Director.screen-shake [self ?duration ?intensity]
+  (let [duration (or ?duration 0.3)
+        intensity (or ?intensity 1)]
+    (when self.shake-timeline
+      (self.shake-timeline:cancel))
+    (set self.shake-timeline
+         (fire-timeline
+          (var t 0)
+          (while (< t duration)
+            (set state.state.camera-shake
+                 (vec (love.math.random (- intensity) intensity)
+                      (love.math.random (- intensity) intensity)))
+            (set t (+ t (coroutine.yield))))))))
 
 (λ Director.roll-shop [self]
   (set state.state.shop-row [])
@@ -82,13 +121,38 @@
 (λ Director.draw [self]
    (layout #nil {:size stage-size} 
      [[view {:display :absolute}
-       [(unit-list)
+       [(imm-stateful button state.state [:debug-spawn-enemy]
+                      {:label :spawn-enemies
+                       :size (vec 60 60)
+                       :on-click #(self:spawn-enemy-group (vec (love.math.random 10 arena-size.x)
+                                                               (love.math.random 10 arena-size.y))
+                                                          [:basic :basic :basic])
+                       :position (vec 10 10)})
+        (unit-list)
         (shop-row)]]])
    (let [fps (love.timer.getFPS)]
      (love.graphics.setColor 1 0 0 1)
      (love.graphics.print (tostring fps) 4 4)
      (love.graphics.setColor 0 1 0 1)
      (love.graphics.print (tostring state.state.unit-count) 40 4)))
+
+(λ Director.spawn-enemy-group [self pos group]
+  (fire-timeline
+    (local img {: pos
+                :id (tostring (get-id))
+                :z-index 100
+                :timers {:spawn {:t 0 :active true}}
+                :arena-draw
+                (λ [self]
+                  (when (= 0 (% (math.floor (* self.timers.spawn.t 10)) 2))
+                    (graphics.image aseprite.warn self.pos)))})
+    (tiny.addEntity ecs.world img)
+    (timeline.wait 1)
+    (each [_ enemy-type (ipairs group)]
+      (tiny.addEntity ecs.world
+                      (new-entity Enemy {: pos : enemy-type})))
+    (set img.dead true)))
+
 
 (λ Director.spawn-group [self group]
   (each [_ unit-type (ipairs group)]

@@ -30,6 +30,7 @@
 (λ Box2dEntity.init-properties [self]
   (set self.fixture (love.physics.newFixture self.body self.shape
                                              (or self.density 1)))
+  (self.fixture:setUserData self.id)
   (when self.linear-damping
     (self.body:setLinearDamping self.linear-damping))
   (when self.restitution
@@ -42,7 +43,8 @@
 (local Box2dRectangle (setmetatable {} Box2dEntity))
 (set Box2dRectangle.__index Box2dRectangle)
 
-(λ Box2dRectangle.init [self]
+(λ Box2dRectangle.init [self ?id]
+  (set self.id (or ?id self.id))
   (self:create-body)
   (set self.shape (love.physics.newRectangleShape
                     self.size.x self.size.y))
@@ -59,7 +61,8 @@
 (local Box2dCircle (setmetatable {} Box2dEntity))
 (set Box2dCircle.__index Box2dCircle)
 
-(λ Box2dCircle.init [self]
+(λ Box2dCircle.init [self ?id]
+  (set self.id (or ?id self.id))
   (self:create-body)
   (set self.shape (love.physics.newCircleShape self.radius))
   (self:init-properties))

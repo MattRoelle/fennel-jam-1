@@ -17,6 +17,20 @@
 (state.reset-state)
 (ecs.reset-ecs)
 
+;; cleanup-system handles removing entities that have :dead = true
+(local cleanup-system (tiny.processingSystem))
+(set cleanup-system.filter (tiny.requireAll :id))
+
+(λ cleanup-system.process [self e dt]
+  (when e.debug
+    (print :debug e.dead))
+  (when e.dead
+    (when e.destroy
+      (e:destroy))
+    (tiny.removeEntity ecs.world e)))
+
+(tiny.addSystem ecs.world cleanup-system)
+
 ;; init-system handles calling init on entities with a dt
 (local init-system (tiny.processingSystem))
 (set init-system.filter (tiny.requireAll :init))
@@ -26,26 +40,39 @@
 
 (tiny.addSystem ecs.world init-system)
 
+;; timer-system handles updating timers on
+;; entities which declare a timer field
+(local timers-system (tiny.processingSystem))
+(set timers-system.filter (tiny.requireAll :timers))
+
+(λ timers-system.process [self e dt]
+  (each [_ v (pairs e.timers)]
+    (when v.active
+      (set v.t (+ v.t dt)))))
+
+(tiny.addSystem ecs.world timers-system)
+
 ;; index-system handles sorting player/enemy units into easily accessible tables
-;; it also adds a unique integer id to each entity
 (local index-system (tiny.processingSystem))
 (set index-system.filter (tiny.requireAll :team))
 
-(var _id 0)
-(fn get-id [] (set _id (+ _id 1)) _id)
-
 (λ index-system.onAdd [self e]
-  (set e.id (get-id))
   (tset state.state :teams e.team e.id e)
+  (tset state.state.idmap e.id e)
   (when e.unit-type
     (set state.state.unit-count (+ state.state.unit-count 1))
-    (tset state.state.units e.unit-type e.id e)))
+    (tset state.state.units e.unit-type e.id e))
+  (when e.enemy-type
+    (set state.state.enemy-count (+ state.state.enemy-count 1))))
 
 (λ index-system.onRemove [self e]
   (tset state.state :teams e.team e.id nil)
+  (tset state.state.idmap e.id nil)
   (when e.unit-type
     (set state.state.unit-count (- state.state.unit-count 1))
-    (tset state.state.units e.unit-type e.id nil)))
+    (tset state.state.units e.unit-type e.id nil))
+  (when e.enemy-type
+    (set state.state.enemy-count (- state.state.enemy-count 1))))
 
 (tiny.addSystem ecs.world index-system)
 
@@ -73,7 +100,8 @@
 
 (λ draw-system.preProcess [self dt]
   (love.graphics.push)
-  (love.graphics.scale state.state.screen-scale.x state.state.screen-scale.y))
+  (love.graphics.scale state.state.screen-scale.x state.state.screen-scale.y)
+  (love.graphics.translate state.state.camera-shake.x state.state.camera-shake.y))
   
 (λ draw-system.process [self e dt]
   (e:draw))
