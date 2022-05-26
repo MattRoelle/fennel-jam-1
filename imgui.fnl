@@ -109,8 +109,9 @@
     (let [(px py) (love.graphics.transformPoint 0 0)]
       ;; Screen is always the root of the layout stack
       (push-layout-stack {:position (vec px py)
-                          :size (vec (love.graphics.getWidth) 
-                                     (love.graphics.getHeight))})))
+                          :size (or (?. ?props :size)
+                                    (vec (love.graphics.getWidth 
+                                           (love.graphics.getHeight))))})))
   (render-layout-node f ?props ?children))
 
 
