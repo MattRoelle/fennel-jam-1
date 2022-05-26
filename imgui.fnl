@@ -91,7 +91,7 @@
         context (peek-layout-stack)]
     (let [new-context
           {:position (+ context.position props.padding)
-           :size (or props.size (- context.size (* props.padding 2)))}]
+           :size (- (or props.size context.size) (* props.padding 2))}]
       (f new-context props)
       (push-layout-stack new-context)
       (let [draw-f

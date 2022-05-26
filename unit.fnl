@@ -32,13 +32,13 @@
     (graphics.circle
      (vec x y)
      (* self.box2d.radius 1.5)
-     (rgba 0 1 1 1))))
+     self.box2d.color)))
 
 (λ Unit.update [self dt]
   (when (> 0.02 (math.random))
     (self.box2d.body:applyLinearImpulse (love.math.random -4 4) (love.math.random -4 4))))
 
 (set Unit.__defaults
-     {:z-index 10 :pos (vec (+ 20 (math.abs (* 200 (math.random)))) 32)})
+     {:z-index 10 :pos (vec 32 32)})
 
 Unit

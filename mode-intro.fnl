@@ -1,95 +1,21 @@
-(local {: vec : polar-vec2} (require :vector))
+(import-macros {: fire-timeline} :macros)
+
 (local graphics (require :graphics))
+(local {: vec : polar-vec2} (require :vector))
 (local {: rgba : hexcolor} (require :color))
 (local tiny (require :lib.tiny))
 (local {: world} (require :ecs))
 (local timeline (require :timeline))
 (local {: state : reset-state} (require :state))
-(local {: new-entity} (require :helpers))
-(local {: layout : get-layout-rect} (require :imgui))
+(local {: new-entity : get-mouse-position} (require :helpers))
 (local aabb (require :aabb))
-(import-macros {: fire-timeline} :macros)
-
-(λ text [context props]
-  "Basic text component"
-  (let [rect (get-layout-rect context)
-        alignment (or props.align :center)]
-    (when props.color
-      (love.graphics.setColor (unpack (props.color:serialize)))
-      (love.graphics.print (or props.text "nil")
-                           (. rect alignment :x)
-                           (. rect alignment :y)))))
-
-(λ image [context props]
-  "Basic image component"
-  (let [rect (get-layout-rect context)]
-    (love.graphics.setColor 1 1 1 1)
-    (love.graphics.push)
-    (love.graphics.translate rect.center.x rect.center.y)
-    (love.graphics.scale (or props.scale 1) (or props.scale 1))
-    (love.graphics.draw props.image)
-    (love.graphics.pop)))
-
-(λ view [context props]
-  "Basic view component"
-  (when props.color
-    (graphics.rectangle context.position context.size props.color)))
-    ;(print context.position context.size)
-  ; (let [rect (get-layout-rect context)])))
-  ;     (love.graphics.circle :fill rect.center.x rect.center.y 6))))
-  ;     (love.graphics.circle :fill rect.left-center.x rect.left-center.y 6))))
-  ;     (love.graphics.circle :fill rect.right-center.x rect.right-center.y 6))))
-  ;     (love.graphics.circle :fill rect.top-center.x rect.top-center.y 6))))
-  ;     (love.graphics.circle :fill rect.bottom-center.x rect.bottom-center.y 6))))
-
-(λ get-mouse-position []
-  (let [(x y) (love.mouse.getPosition)]
-    (vec x y)))
-
-(λ mouse-interaction [context]
-  "Returns values indicating mouse-down? and hovering? state"
-  (let [mpos (get-mouse-position)
-        mouse-down? (love.mouse.isDown 1)
-        (sx sy) (love.graphics.transformPoint context.position.x
-                                              context.position.y)
-        screen-space-pos (vec sx sy)
-        screen-space-size context.size
-        rect (aabb screen-space-pos screen-space-size)
-        hovering? (rect:contains-point? mpos)]
-    (values mouse-down? hovering?)))
-
-(λ button [?state context props]
-  "An immediate mode button"
-  (let [state (or ?state {:hover false})
-        (mouse-down? in-range?) (mouse-interaction context)]
-    (set state.hover in-range?)
-    (when (and props.on-click
-               in-range?
-               (not state.mouse-down?)
-               mouse-down?)
-      (props.on-click))
-    (set state.mouse-down? mouse-down?)
-    (love.graphics.setColor (unpack (if state.hover
-                                        [0.4 0.4 0.4 1]
-                                        [0.2 0.2 0.2 1])))
-    (love.graphics.rectangle :fill
-                            context.position.x
-                            context.position.y
-                            context.size.x
-                            context.size.y)
-    (love.graphics.setColor 1 1 1 1)
-    (love.graphics.print (or props.label "na") context.position.x context.position.y)
-    state))
-
+(local Director (require :director))
 (local Unit (require :unit))
 (local {: Box2dRectangle} (require :wall))
 
+(local {: stage-size : center-stage : arena-margin : arena-offset : arena-size} (require :constants))
+
 ;; Constants
-(local stage-size (vec 720 450))
-(local center-stage (/ stage-size 2))
-(local arena-margin (vec 100 70))
-(local arena-offset (vec 0 -40))
-(local arena-size (- stage-size (* arena-margin 2)))
 
 ;; Reset ECS 
 (tiny.clearEntities world)
@@ -186,20 +112,6 @@
     (set state.screen-scale (vec s s))))
     
 ;; Main
-(λ shop-row []
-  [view {:display :absolute
-         :left 20
-         :position (vec 0 (- stage-size.y 300))
-         :flex-direction :row
-         :size (vec stage-size.x 100)
-         :padding (vec 10 10)}
-   [[view {:color (rgba 0.5 0.3 0.3 1)
-            :padding (vec 10 10)}]
-    [view {:color (rgba 0.3 0.3 0.5 1)
-            :padding (vec 10 10)}]
-    [view {:color (rgba 0.3 0.5 0.3 1)
-            :padding (vec 10 10)}]]])
-
 (λ draw-bg []
   (graphics.rectangle (vec 0 0) stage-size (hexcolor :212121ff)))
 
@@ -215,21 +127,12 @@
                      ;(draw-bg)
                      (love.graphics.setColor 1 1 1 1)
                      (love.graphics.draw arena-canvas
-                                         arena-margin.x
-                                         arena-margin.y 0 1 1))})
+                                         (+ arena-margin.x arena-offset.x)
+                                         (+ arena-margin.y arena-offset.y)
+                                         0 1 1))})
 
   ;; Add director 
-  (set state.director
-       {:z-index 10000
-        :draw
-        (λ [self]
-          (layout #nil {:size stage-size} 
-            [[view {:display :absolute}
-              [(shop-row)]]])) 
-        :update
-        (λ [self dt]
-          (state.pworld:update dt))})
-
+  (set state.director (new-entity Director))
   (tiny.addEntity world state.director)
 
   (tiny.add world
@@ -244,15 +147,16 @@
                  :size (vec 10 arena-size.y)})
     (new-entity Box2dRectangle
                 {:pos (vec arena-size.x (/ arena-size.y 2))
-                 :size (vec 10 arena-size.y)}))
+                 :size (vec 10 arena-size.y)})))
 
-  (fire-timeline
-    (for [i 1 100]
-      (coroutine.yield)
-      (tiny.addEntity world
-        (new-entity Unit
-                    {:pos (vec (love.math.random 100 200)
-                               (love.math.random 100 200))})))))
+  ;; (fire-timeline
+  ;;   (for [i 1 20]
+  ;;     (timeline.wait 0.05)
+  ;;     (for [i 1 6]
+  ;;       (tiny.addEntity world
+  ;;         (new-entity Unit
+  ;;                     {:pos (vec (love.math.random 100 200)
+  ;;                                (love.math.random 100 200))}))))))
 
 (main)
 (tiny.refresh world)
