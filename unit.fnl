@@ -10,6 +10,10 @@
 (local data (require :data))
 (local timeline (require :timeline))
 (local assets (require :assets))
+(local {: new-entity} (require :helpers))
+(local tiny (require :lib.tiny))
+(local ecs (require :ecs))
+(local Projectile (require :projectile))
 
 (local Unit {})
 (set Unit.__index Unit)
@@ -27,16 +31,18 @@
   (set self.def (. data.unit-types self.unit-type))
   (set self.hp self.def.hp)
   (set self.box2d
-       (new-entity Box2dCircle {:color (rgba (math.abs (math.random))
-                                             (math.abs (math.random))
-                                             (math.abs (math.random))
-                                             1)
-                                :radius (love.math.random 4 7)
-                                :pos self.pos
-                                :body-type :dynamic
-                                :linear-damping 0.5
-                                :mass 0.5
-                                :restitution 0.99}))
+       (tiny.addEntity ecs.world
+                       (new-entity Box2dCircle {:color (rgba (math.abs (math.random))
+                                                             (math.abs (math.random))
+                                                             (math.abs (math.random))
+                                                             1)
+                                                :radius 5
+                                                :pos self.pos
+                                                :body-type :dynamic
+                                                :linear-damping 0.5
+                                                :category 1
+                                                :mass 1 
+                                                :restitution 0.99})))
   (self.box2d:init self.id)
   (let [iv (polar-vec2 (* (math.random) 2 math.pi) 20)]
     (self.box2d.body:applyLinearImpulse iv.x iv.y)))
@@ -50,6 +56,7 @@
      (* self.box2d.radius 1.5)
      (match self.unit-type
        :warrior (rgba 0 1 0 1)
+       :shooter (rgba 0 0 1 1)
        _ (rgba 1 1 1 1)))
     (graphics.print-centered self.hp assets.f16 (+ p (vec 0 20)) (rgba 1 1 1 1))
     (when (> self.flash-t 0)
@@ -64,8 +71,14 @@
     (let [iv (polar-vec2 (* (math.random) 2 math.pi) 5)]
       (self.box2d.body:applyLinearImpulse iv.x iv.y))))
 
+(λ Unit.shoot-update [self dt]
+  (when (> self.timers.shoot-tick.t 0.5)
+    (set self.timers.shoot-tick.t 0)
+    (let [(x y) (self.box2d.body:getPosition)]
+      (tiny.addEntity ecs.world (new-entity Projectile {:pos (vec x y)})))))
+
 (λ Unit.bump-update [self dt]
-  (when (and (> state.state.enemy-count 0) (> self.timers.move-tick.t 1))
+  (when (and (> state.state.enemy-count 0) (> self.timers.move-tick.t 1.5))
     (set self.timers.move-tick.t 0)
     (let [e-id (lume.randomchoice (lume.keys state.state.teams.enemy))
           e (. state.state.teams.enemy e-id)
@@ -74,20 +87,22 @@
           (x y) (self.box2d.body:getPosition)
           p (vec x y)
           angle (p:angle-to ep)
-          iv (polar-vec2 angle 20)]
+          iv (polar-vec2 angle 32)]
        (self.box2d.body:applyLinearImpulse iv.x iv.y))))
 
 (λ Unit.update [self dt]
   (when (<= self.hp 0)
    (set self.dead true))
   (match self.unit-type
-    :warrior (self:bump-update dt)))
+    :warrior (self:bump-update dt)
+    :shooter (self:shoot-update dt)))
 
 (set Unit.__defaults
      {:z-index 10
       :flash-t 0
       :__timers {:spawn {:t 0 :active true}
-                 :move-tick {:t 0 :active true}}
+                 :move-tick {:t 0 :active true}
+                 :shoot-tick {:t 0 :active true}}
       :pos (vec 32 32)
       :team :player})
 
@@ -120,11 +135,12 @@
                                              (math.abs (math.random))
                                              (math.abs (math.random))
                                              1)
-                                :radius (love.math.random 4 7)
+                                :radius (love.math.random 6 10)
                                 :pos self.pos
                                 :body-type :dynamic
                                 :linear-damping 1
-                                :mass 0.5
+                                :category 2
+                                :mass 3
                                 :restitution 0.99}))
   (self.box2d:init self.id)
   (let [iv (polar-vec2 (* (math.random) 2 math.pi) 20)]

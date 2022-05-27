@@ -34,7 +34,11 @@
   (when self.linear-damping
     (self.body:setLinearDamping self.linear-damping))
   (when self.restitution
-    (self.fixture:setRestitution self.restitution)))
+    (self.fixture:setRestitution self.restitution))
+  (when self.category
+    (self.fixture:setCategory self.category))
+  (when self.mask
+    (self.fixture:setMask self.mask)))
 
 (set Box2dEntity.__defaults
      {:linear-damping 0.9
