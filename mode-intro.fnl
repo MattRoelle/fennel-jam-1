@@ -43,7 +43,12 @@
 ;; timer-system handles updating timers on
 ;; entities which declare a timer field
 (local timers-system (tiny.processingSystem))
-(set timers-system.filter (tiny.requireAll :timers))
+(set timers-system.filter (tiny.requireAll :__timers))
+
+(λ timers-system.onAdd [self e]
+  (set e.timers
+    (collect [k v (pairs e.__timers)]
+      (values k {:t 0 :active v.active}))))
 
 (λ timers-system.process [self e dt]
   (each [_ v (pairs e.timers)]

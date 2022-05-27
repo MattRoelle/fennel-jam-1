@@ -65,7 +65,8 @@
       (self.box2d.body:applyLinearImpulse iv.x iv.y))))
 
 (λ Unit.bump-update [self dt]
-  (when (and (> state.state.enemy-count 0) (> 0.003 (math.random)))
+  (when (and (> state.state.enemy-count 0) (> self.timers.move-tick.t 1))
+    (set self.timers.move-tick.t 0)
     (let [e-id (lume.randomchoice (lume.keys state.state.teams.enemy))
           e (. state.state.teams.enemy e-id)
           (ex ey) (e.box2d.body:getPosition)
@@ -85,6 +86,8 @@
 (set Unit.__defaults
      {:z-index 10
       :flash-t 0
+      :__timers {:spawn {:t 0 :active true}
+                 :move-tick {:t 0 :active true}}
       :pos (vec 32 32)
       :team :player})
 
@@ -120,7 +123,7 @@
                                 :radius (love.math.random 4 7)
                                 :pos self.pos
                                 :body-type :dynamic
-                                :linear-damping 0.25
+                                :linear-damping 1
                                 :mass 0.5
                                 :restitution 0.99}))
   (self.box2d:init self.id)

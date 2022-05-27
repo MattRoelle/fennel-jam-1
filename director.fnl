@@ -19,6 +19,18 @@
 (local {: Unit : Enemy} (require :unit))
 (local data (require :data))
 (local aseprite (require :aseprite))
+(local {: get-copy-str} (require :copy))
+
+(λ tooltip []
+  (when state.state.hover-shop-btn
+    (let [sz (vec 400 200)]
+      [view {:display :flex
+             :position (- center-stage (/ sz 2))
+             :size sz
+             :color (rgba 0 0 0 1)
+             :padding (vec 4 4)}
+       [[text {:text (get-copy-str :en :units :shooter)
+               :color (rgba 1 1 1 1)}]]])))
 
 (λ unit-list []
   [view {:display :stack
@@ -65,8 +77,8 @@
 (λ Director.attack-bump [self ea eb]
   (ea:flash)
   (eb:flash)
-  (set ea.hp (- ea.hp 5))
-  (set eb.hp (- eb.hp 5))
+  (set ea.hp (- ea.hp eb.def.bump-damage))
+  (set eb.hp (- eb.hp eb.def.bump-damage))
   (self:screen-shake))
 
 ;; box2d collision callbacks
@@ -129,7 +141,8 @@
                                                           [:basic :basic :basic])
                        :position (vec 10 10)})
         (unit-list)
-        (shop-row)]]])
+        (shop-row)
+        (tooltip)]]])
    (let [fps (love.timer.getFPS)]
      (love.graphics.setColor 1 0 0 1)
      (love.graphics.print (tostring fps) 4 4)
@@ -141,7 +154,7 @@
     (local img {: pos
                 :id (tostring (get-id))
                 :z-index 100
-                :timers {:spawn {:t 0 :active true}}
+                :__timers {:spawn {:t 0 :active true}}
                 :arena-draw
                 (λ [self]
                   (when (= 0 (% (math.floor (* self.timers.spawn.t 10)) 2))

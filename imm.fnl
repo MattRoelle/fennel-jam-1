@@ -51,9 +51,9 @@
 (λ button [?state context props]
   "An immediate mode button"
   (let [bstate (or ?state {:hover false})
-        (mouse-down? in-range?) (mouse-interaction context)]
-    (set bstate.hover in-range?)
-    (when (and props.on-click in-range? mouse-down?)
+        (mouse-down? hovering?) (mouse-interaction context)]
+    (set bstate.hover hovering?)
+    (when (and props.on-click hovering? mouse-down?)
       (props.on-click))
     (set bstate.mouse-down? mouse-down?)
     (graphics.rectangle context.position context.size
@@ -73,9 +73,13 @@
 (λ shop-button [?state context props]
   "An immediate mode button"
   (let [bstate (or ?state {:hover false})
-        (mouse-down? in-range?) (mouse-interaction context)]
-    (set bstate.hover in-range?)
-    (when (and in-range? mouse-down?)
+        (mouse-down? hovering?) (mouse-interaction context)]
+    (set bstate.hover hovering?)
+    (set state.state.hover-shop-btn
+         (if hovering? bstate
+             (= state.state.hover-shop-btn bstate) nil
+             state.state.hover-shop-btn))
+    (when (and hovering? mouse-down?)
       (set state.state.active-shop-btn
            (if (= state.state.active-shop-btn bstate) nil bstate)))
       ;(props.on-click))
