@@ -2,13 +2,13 @@
 (local {: state} (require :state))
 
 (var _id 0)
-(fn get-id [] (set _id (+ _id 1)) _id)
+(fn get-id [] (set _id (+ _id 1)) (tostring _id))
 
 (λ new-entity [typ ?o]
   (let [tbl (lume.merge (or typ.__defaults {})
                         (or ?o {}))
         inst (setmetatable tbl typ)]
-    (set inst.id (tostring (get-id)))
+    (set inst.id (or inst.id (tostring (get-id))))
     inst))
 
 (λ get-mouse-position []

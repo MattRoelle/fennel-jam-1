@@ -17,20 +17,6 @@
 (state.reset-state)
 (ecs.reset-ecs)
 
-;; cleanup-system handles removing entities that have :dead = true
-(local cleanup-system (tiny.processingSystem))
-(set cleanup-system.filter (tiny.requireAll :id))
-
-(λ cleanup-system.process [self e dt]
-  (when e.debug
-    (print :debug e.dead))
-  (when e.dead
-    (when e.destroy
-      (e:destroy))
-    (tiny.removeEntity ecs.world e)))
-
-(tiny.addSystem ecs.world cleanup-system)
-
 ;; init-system handles calling init on entities with a dt
 (local init-system (tiny.processingSystem))
 (set init-system.filter (tiny.requireAll :init))
@@ -59,11 +45,12 @@
 
 ;; index-system handles sorting player/enemy units into easily accessible tables
 (local index-system (tiny.processingSystem))
-(set index-system.filter (tiny.requireAll :team))
+(set index-system.filter (tiny.requireAll :id))
 
 (λ index-system.onAdd [self e]
-  (tset state.state :teams e.team e.id e)
   (tset state.state.idmap e.id e)
+  (when e.team
+    (tset state.state :teams e.team e.id e))
   (when e.unit-type
     (set state.state.unit-count (+ state.state.unit-count 1))
     (tset state.state.units e.unit-type e.id e))
@@ -71,8 +58,9 @@
     (set state.state.enemy-count (+ state.state.enemy-count 1))))
 
 (λ index-system.onRemove [self e]
-  (tset state.state :teams e.team e.id nil)
   (tset state.state.idmap e.id nil)
+  (when e.team
+    (tset state.state :teams e.team e.id nil))
   (when e.unit-type
     (set state.state.unit-count (- state.state.unit-count 1))
     (tset state.state.units e.unit-type e.id nil))
@@ -147,6 +135,20 @@
   
 (tiny.addSystem ecs.world arena-draw-system)
 
+;; cleanup-system handles removing entities that have :dead = true
+(local cleanup-system (tiny.processingSystem))
+(set cleanup-system.filter (tiny.requireAll :id))
+
+(λ cleanup-system.process [self e dt]
+  (when e.debug
+    (print :debug e.dead))
+  (when e.dead
+    (when e.destroy
+      (e:destroy))
+    (tiny.removeEntity ecs.world e)))
+
+(tiny.addSystem ecs.world cleanup-system)
+
 ;; Screen scaling
 (var window-size (vec (love.graphics.getWidth)
                       (love.graphics.getHeight)))
@@ -190,16 +192,24 @@
   (tiny.add ecs.world
     (new-entity Box2dRectangle
                 {:pos (vec (/ arena-size.x 2) arena-size.y)
-                 :size (vec arena-size.x 10)})
+                 :size (vec arena-size.x 10)
+                 :category "10000000"
+                 :mask "11111111"})
     (new-entity Box2dRectangle
                 {:pos (vec (/ arena-size.x 2) 0)
-                 :size (vec arena-size.x 10)})
+                 :size (vec arena-size.x 10)
+                 :category "10000000"
+                 :mask "11111111"})
     (new-entity Box2dRectangle
                 {:pos (vec 0 (/ arena-size.y 2))
-                 :size (vec 10 arena-size.y)})
+                 :size (vec 10 arena-size.y)
+                 :category "10000000"
+                 :mask "11111111"})
     (new-entity Box2dRectangle
                 {:pos (vec arena-size.x (/ arena-size.y 2))
-                 :size (vec 10 arena-size.y)})))
+                 :size (vec 10 arena-size.y)
+                 :category "10000000"
+                 :mask "11111111"})))
 
 (main)
 
@@ -208,4 +218,3 @@
    (tiny.update ecs.world dt))
  :keypressed (fn keypressed [key set-mode])
  :resize set-win-size}
-                 ;(love.event.quit))}

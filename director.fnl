@@ -69,7 +69,7 @@
             :size (vec 100 100)}
       [(imm-stateful shop-button
                      state.state.shop-row [ix]
-                     {:label :test})]])])
+                     {:label btn.label})]])])
 
 (local Director {})
 (set Director.__index Director)
@@ -81,23 +81,38 @@
   (set eb.hp (- eb.hp eb.def.bump-damage))
   (self:screen-shake))
 
+(λ Director.bullet-hit [self bullet target]
+  (target:flash)
+  (set target.hp (- target.hp bullet.bullet.dmg))
+  (self:screen-shake)
+  (set bullet.dead true))
+
+(λ Director.process-collision [self ea eb]
+  (let [(collision-type A B)
+        (if (and ea.bullet (= eb.team :enemy))
+            (values :player-bullet-to-enemy ea eb)
+            (and eb.bullet (= ea.team :enemy))
+            (values :player-bullet-to-enemy eb ea)
+            (and (= ea.team :player) (= eb.team :enemy))
+            (values :bump-player-enemy ea eb)
+            (and (= eb.team :player) (= ea.team :enemy))
+            (values :bump-player-enemy eb ea))]
+    (match collision-type
+      :bump-player-enemy (self:attack-bump A B)
+      :player-bullet-to-enemy (self:bullet-hit A B))))
+
 ;; box2d collision callbacks
 (λ Director.begin-contact [self a b col]
   (let [ea (state.get-entity-by-id (a:getUserData))
         eb (state.get-entity-by-id (b:getUserData))]
-    (when (and ea eb ea.team eb.team (not= ea.team eb.team))
-      (self:attack-bump ea eb))))
+    (when (and ea eb)
+      (self:process-collision ea eb))))
 
 (λ Director.end-contact [self a b col])
 (λ Director.pre-solve [self a b col])
 (λ Director.post-solve [self a b col])
 
 (λ Director.init [self]
-  (fire-timeline
-    (timeline.wait 0.5)
-    (set state.state.arena-mpos (vec 100 100))
-    (self:spawn-enemy-group (vec 180 100) [:basic :basic])
-    (self:spawn-group [:warrior :warrior :warrior]))
   (self:roll-shop)
   (state.state.pworld:setCallbacks
     #(self:begin-contact $...)
@@ -122,9 +137,11 @@
 (λ Director.roll-shop [self]
   (set state.state.shop-row [])
   (table.insert state.state.shop-row
-                {:cost 3 :group [:warrior :warrior :warrior]})
+                {:cost 3 :group [:warrior :warrior :warrior]
+                 :label "3 warriors"})
   (table.insert state.state.shop-row
-                {:cost 3 :group [:shooter :shooter :shooter]}))
+                {:cost 3 :group [:shooter :shooter :shooter]
+                 :label "3 shooters"}))
 
 (λ Director.arena-draw [self]
   (when state.active-shop-btn
@@ -138,7 +155,7 @@
                        :size (vec 60 60)
                        :on-click #(self:spawn-enemy-group (vec (love.math.random 10 arena-size.x)
                                                                (love.math.random 10 arena-size.y))
-                                                          [:basic :basic :basic])
+                                                          [:basic :basic :basic :basic :basic :basic])
                        :position (vec 10 10)})
         (unit-list)
         (shop-row)

@@ -36,9 +36,11 @@
   (when self.restitution
     (self.fixture:setRestitution self.restitution))
   (when self.category
-    (self.fixture:setCategory self.category))
-  (when self.mask
-    (self.fixture:setMask self.mask)))
+    (assert self.mask "must pass mask")
+    (self.fixture:setFilterData
+     (tonumber self.category 2)
+     (tonumber self.mask 2)
+     0)))
 
 (set Box2dEntity.__defaults
      {:linear-damping 0.9

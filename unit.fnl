@@ -31,18 +31,18 @@
   (set self.def (. data.unit-types self.unit-type))
   (set self.hp self.def.hp)
   (set self.box2d
-       (tiny.addEntity ecs.world
-                       (new-entity Box2dCircle {:color (rgba (math.abs (math.random))
-                                                             (math.abs (math.random))
-                                                             (math.abs (math.random))
-                                                             1)
-                                                :radius 5
-                                                :pos self.pos
-                                                :body-type :dynamic
-                                                :linear-damping 0.5
-                                                :category 1
-                                                :mass 1 
-                                                :restitution 0.99})))
+       (new-entity Box2dCircle {:color (rgba (math.abs (math.random))
+                                             (math.abs (math.random))
+                                             (math.abs (math.random))
+                                             1)
+                                :radius 5
+                                :pos self.pos
+                                :body-type :dynamic
+                                :linear-damping 0.5
+                                :mass 1 
+                                :restitution 0.99
+                                :category "00000001"
+                                :mask "10001011"}))
   (self.box2d:init self.id)
   (let [iv (polar-vec2 (* (math.random) 2 math.pi) 20)]
     (self.box2d.body:applyLinearImpulse iv.x iv.y)))
@@ -74,8 +74,21 @@
 (λ Unit.shoot-update [self dt]
   (when (> self.timers.shoot-tick.t 0.5)
     (set self.timers.shoot-tick.t 0)
-    (let [(x y) (self.box2d.body:getPosition)]
-      (tiny.addEntity ecs.world (new-entity Projectile {:pos (vec x y)})))))
+    (when (> state.state.enemy-count 0)
+      (let [e-id (lume.randomchoice (lume.keys state.state.teams.enemy))
+            e (. state.state.teams.enemy e-id)
+            (ex ey) (e.box2d.body:getPosition)
+            ep (vec ex ey)
+            (x y) (self.box2d.body:getPosition)
+            p (vec x y)
+            angle (p:angle-to ep)
+            iv (polar-vec2 angle 1)]
+        (tiny.addEntity ecs.world (new-entity Projectile
+                                              {:pos (vec x y)
+                                               :direction iv}))))))
+
+(λ Unit.destroy [self]
+  (self.box2d.body:destroy))
 
 (λ Unit.bump-update [self dt]
   (when (and (> state.state.enemy-count 0) (> self.timers.move-tick.t 1.5))
@@ -139,9 +152,10 @@
                                 :pos self.pos
                                 :body-type :dynamic
                                 :linear-damping 1
-                                :category 2
                                 :mass 3
-                                :restitution 0.99}))
+                                :restitution 0.99
+                                :category "00000010"
+                                :mask "10000111"}))
   (self.box2d:init self.id)
   (let [iv (polar-vec2 (* (math.random) 2 math.pi) 20)]
     (self.box2d.body:applyLinearImpulse iv.x iv.y)))
