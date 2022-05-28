@@ -134,6 +134,7 @@
 
 (λ Enemy.destroy [self]
   (state.state.director:add-gold 1)
+  (state.state.director:loot self)
   (print :here)
   (set state.state.enemy-count
        (- state.state.enemy-count 1)))

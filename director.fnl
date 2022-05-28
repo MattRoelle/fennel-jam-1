@@ -85,14 +85,16 @@
          :padding (vec 8 0)
          :size (vec stage-size.x 110)}
    (icollect [ix btn (ipairs state.state.shop-row)]
-     [view {:color (rgba 0.5 0.3 0.3 1)
-            :padding (vec 10 10)
-            :display :flex
-            :size (vec 100 100)}
-      [(imm-stateful shop-button
-                     state.state.shop-row [ix]
-                     {:label btn.label
-                      :index ix})]])])
+     (when (. state.state.shop-row ix)
+       [view {:color (rgba 0.5 0.3 0.3 1)
+              :padding (vec 10 10)
+              :display :flex
+              :size (vec 100 100)}
+        (when btn 
+          [(imm-stateful shop-button
+                         state.state.shop-row [ix]
+                         {:label btn.label
+                          :index ix})])]))])
 
 (local Director {})
 (set Director.__index Director)
@@ -157,8 +159,17 @@
                       (love.math.random (- intensity) intensity)))
             (set t (+ t (coroutine.yield))))))))
 
+(λ Director.loot [self]
+  (table.insert state.state.shop-row
+                {:cost 3 :group [:warrior]
+                 :label "Warrior"}))
+
+(λ Director.buy-roll-shop [self]
+  (when (> state.state.money 0)
+    (set state.state.money (- state.state.money 1))
+    (self:roll-shop)))
+
 (λ Director.roll-shop [self]
-  (set state.state.shop-row [])
   (table.insert state.state.shop-row
                 {:cost 3 :group [:warrior]
                  :label "Warrior"})
@@ -180,6 +191,11 @@
                                                                (love.math.random 10 arena-size.y))
                                                           [:basic :basic :basic :basic :basic :basic])
                        :position (vec 10 10)})
+        (imm-stateful button state.state [:reroll-shop-btn]
+                      {:label :reroll
+                       :size (vec 60 60)
+                       :on-click #(self:buy-roll-shop)
+                       :position (vec 10 200)})
         (unit-list)
         (top-row)
         (shop-row)
@@ -250,7 +266,10 @@
     (when (> state.state.money shop-item.cost)
       (set state.state.money (- state.state.money shop-item.cost))
       (self:screen-shake)
-      (self:spawn-group (/ arena-size 2) shop-item.group))))
+      (self:spawn-group (/ arena-size 2) shop-item.group)
+      (set state.state.shop-row
+           (icollect [ix si (ipairs state.state.shop-row)]
+             (when (not= index ix) si))))))
 
 (λ Director.update [self dt]
   (input:update)

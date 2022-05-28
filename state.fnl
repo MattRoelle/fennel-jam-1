@@ -13,7 +13,7 @@
          {:screen-scale (vec 1 1)
           :screen-offset (vec 0 0)
           :unit-count 0
-          :money 10
+          :money 20
           :enemy-count 0
           :idmap {}
           :units
