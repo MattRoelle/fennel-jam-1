@@ -21,6 +21,7 @@
 (local aseprite (require :aseprite))
 (local {: get-copy-str} (require :copy))
 (local assets (require :assets))
+(local effects (require :effects))
 
 (λ start-game-prompt []
   (when (not state.state.started)
@@ -33,6 +34,30 @@
        [[text {:text "Purchase a unit to begin"
                :color (rgba 1 1 1 1)}]]])))
 
+(λ upgrade-screen []
+  (when state.state.upgrade-screen-open?
+    (let [sz (vec 600 300)]
+      [view {:display :flex
+             :position (- center-stage (/ sz 2) (vec 0 60))
+             :size sz
+             :color (rgba 0 0 0 1)
+             :flex-direction :column
+             :padding (vec 4 4)}
+       [[text {:text "Choose Upgrade"
+               :font assets.f32
+               :color (rgba 1 1 1 1)}]
+        [view {:display :flex}
+          (icollect [ix upgrade (ipairs state.state.upgrade-choices)]
+            [view {:display :flex
+                   :flex-direction :column}
+             [[text {:text upgrade.upgrade
+                     :font assets.f32
+                     :color (rgba 1 1 1 1)}]
+              (imm-stateful button upgrade [:bstate]
+                            {:label :Choose
+                             :on-click #(state.state.director:choose-upgrade upgrade)})]])]]])))
+          
+
 (λ tooltip []
   (when state.state.hover-shop-btn
     (let [sz (vec 400 200)]
@@ -43,6 +68,19 @@
              :padding (vec 4 4)}
        [[text {:text (get-copy-str :en :units (. state.state.hover-shop-btn.group 1))
                :color (rgba 1 1 1 1)}]]])))
+
+(λ upgrade-list []
+  [view {:display :stack
+         :position (vec 10 10)
+         :size (vec arena-margin.x stage-size.y)
+         :padding (vec 4 4)}
+   [[view {:color (rgba 0.5 0.3 0.3 1)
+           :display :stack
+           :direction :down}
+     (icollect [k v (pairs state.state.upgrades)]
+       [text {:size (vec 80 20)
+              :text (.. k ": " (tostring v))
+              :color (rgba 1 1 1 1)}])]]])
 
 (λ unit-list []
   [view {:display :stack
@@ -100,15 +138,12 @@
 (set Director.__index Director)
 
 (λ Director.attack-bump [self ea eb]
-  (ea:flash)
-  (eb:flash)
-  (set ea.hp (- ea.hp eb.def.bump-damage))
-  (set eb.hp (- eb.hp eb.def.bump-damage))
-  (self:screen-shake))
+  (self:screen-shake)
+  (ea:take-dmg eb.def.bump-damage)
+  (eb:take-dmg ea.def.bump-damage))
 
 (λ Director.bullet-hit [self bullet target]
-  (target:flash)
-  (set target.hp (- target.hp bullet.bullet.dmg))
+  (target:take-dmg bullet.bullet.dmg)
   (self:screen-shake)
   (set bullet.dead true))
 
@@ -144,11 +179,12 @@
     #(self:begin-contact $...)
     #(self:end-contact $...)
     #(self:pre-solve $...)
-    #(self:post-solve $...)))
+    #(self:post-solve $...))
+  (fire-timeline (self:main-timeline)))
 
 (λ Director.screen-shake [self ?duration ?intensity]
-  (let [duration (or ?duration 0.3)
-        intensity (or ?intensity 1)]
+  (let [duration (or ?duration 0.25)
+        intensity (or ?intensity 2)]
     (when self.shake-timeline
       (self.shake-timeline:cancel))
     (set self.shake-timeline
@@ -200,18 +236,20 @@
                        :size (vec 60 60)
                        :on-click #(self:spawn-enemy-group (vec (love.math.random 10 arena-size.x)
                                                                (love.math.random 10 arena-size.y))
-                                                          [:basic :basic :basic :basic :basic :basic])
-                       :position (vec 10 10)})
+                                                          [:brute-1 :basic :basic :basic :basic :basic])
+                       :position (vec 10 210)})
         (imm-stateful button state.state [:reroll-shop-btn]
                       {:label :reroll
                        :size (vec 60 60)
                        :on-click #(self:buy-roll-shop)
-                       :position (vec 10 200)})
+                       :position (vec 10 290)})
+        (upgrade-list)
         (unit-list)
         (top-row)
         (shop-row)
-        (start-game-prompt)
-        (tooltip)]]])
+        (upgrade-screen)
+        (tooltip)
+        (start-game-prompt)]]])
    (let [fps (love.timer.getFPS)]
      (love.graphics.setColor 1 0 0 1)
      (love.graphics.print (tostring fps) 4 4)
@@ -271,6 +309,10 @@
                       (new-entity Unit {: pos : unit-type})))
     (set img.dead true)))
 
+(λ Director.choose-upgrade [self upgrade]
+  (set state.state.upgrade-screen-open? false)
+  (tset state.state.upgrades upgrade.upgrade
+        (+ (or (. state.state.upgrades upgrade.upgrade) 0) 1)))
 
 (λ Director.purchase [self index]
   (let [shop-item (. state.state.shop-row index)]
@@ -295,7 +337,46 @@
                 (- arena-offset (/ state.state.screen-offset state.state.screen-scale.x)))]
     (set state.state.arena-mpos mpos)))
 
+(λ Director.open-upgrade-screen [self]
+  (set state.state.upgrade-choices
+       [{:upgrade :atk-speed-up}
+        {:upgrade :bump-dmg-up}])
+  (set state.state.upgrade-screen-open? true))
+
+(λ Director.main-timeline [self]
+  ;; Game started, wait for first buy
+  (while (not state.state.started)
+    (coroutine.yield))
+  (timeline.wait 1)
+
+  ;; Main game loop
+  (while (not state.state.game-over?)
+    (coroutine.yield)
+    (let [level-def (assert (. data.levels state.state.level)
+                            "Error loading level")]
+      (match level-def
+        {:type :combat
+         : group-options
+         : waves}
+        (each [_ wave (ipairs waves)]
+          (for [i 1 wave.groups]
+            (let [grp (lume.randomchoice group-options)]
+              (self:spawn-enemy-group
+               (vec (love.math.random 50 (- arena-size.x 50))
+                    (love.math.random 50 (- arena-size.y 50)))
+               grp)))
+          (while (> state.state.enemy-count 0)
+            (coroutine.yield))
+          (timeline.wait 0.5))
+        {:type :upgrade}
+        (do
+          (self:open-upgrade-screen)
+          (while state.state.upgrade-screen-open?
+            (coroutine.yield))))
+
+      (set state.state.level (+ state.state.level 1)))))
+
 (set Director.__defaults
-     {:z-index 1000})
+     {:z-index 10000})
 
 Director

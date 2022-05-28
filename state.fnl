@@ -13,8 +13,11 @@
          {:screen-scale (vec 1 1)
           :screen-offset (vec 0 0)
           :unit-count 0
-          :money 20
+          :level 1
+          :money 10
           :enemy-count 0
+          :upgrades {}
+          :upgrade-choices {}
           :idmap {}
           :units
           (collect [k _ (pairs data.unit-types)]

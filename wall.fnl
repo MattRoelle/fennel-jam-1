@@ -40,7 +40,9 @@
     (self.fixture:setFilterData
      (tonumber self.category 2)
      (tonumber self.mask 2)
-     0)))
+     0))
+  (when self.iv
+    (self.body:applyLinearImpulse self.iv.x self.iv.y)))
 
 (set Box2dEntity.__defaults
      {:linear-damping 0.9

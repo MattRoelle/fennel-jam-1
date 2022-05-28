@@ -87,8 +87,7 @@
 
 (λ draw-system.preProcess [self dt]
   (love.graphics.push)
-  (love.graphics.scale state.state.screen-scale.x state.state.screen-scale.y)
-  (love.graphics.translate state.state.camera-shake.x state.state.camera-shake.y))
+  (love.graphics.scale state.state.screen-scale.x state.state.screen-scale.y))
   
 (λ draw-system.process [self e dt]
   (e:draw))
@@ -108,21 +107,36 @@
 (local arena-draw-system (tiny.sortedProcessingSystem))
 (set arena-draw-system.filter (tiny.requireAll :arena-draw :z-index))
 
+(local arena-shader-code
+    "
+vec4 effect(vec4 color, Image tex, vec2 texture_coords, vec2 screen_coords)
+{
+    vec4 texturecolor = Texel(tex, texture_coords);
+    return texturecolor * color;
+}
+    ")
+
+(local arena-shader (love.graphics.newShader arena-shader-code))
+
 (λ arena-draw-system.preProcess [self]
   (set self.old-canvas (love.graphics.getCanvas))
+  (set self.old-shader (love.graphics.getShader))
   (love.graphics.setCanvas arena-canvas)
+  (love.graphics.setShader arena-shader)
   (love.graphics.push)
   (love.graphics.origin)
-  (love.graphics.setColor 0 0 0 0.7)
+  (love.graphics.setColor 0.07 0.07 0.07 1)
   (love.graphics.rectangle :fill 0 0 arena-size.x arena-size.y)
-  (love.graphics.setColor 1 1 1 1))
+  (love.graphics.setColor 1 1 1 1)
+  (love.graphics.translate state.state.camera-shake.x state.state.camera-shake.y))
 
 (λ arena-draw-system.process [self e dt]
   (e:arena-draw))
 
 (λ arena-draw-system.postProcess [self]
   (love.graphics.pop)
-  (love.graphics.setCanvas self.old-canvas))
+  (love.graphics.setCanvas self.old-canvas)
+  (love.graphics.setShader self.old-shader))
 
 (λ arena-draw-system.compare [self e1 e2]
   (> e1.z-index e2.z-index))
@@ -162,34 +176,6 @@
 ;; Main
 (λ draw-bg []
   (graphics.rectangle (vec 0 0) stage-size (hexcolor :212121ff)))
-
-;; The root game timeline
-(λ game-timeline []
-  ;; Game started, wait for first buy
-  (print :starting)
-  (while (not state.state.started)
-    (coroutine.yield))
-
-  (print :here)
-  (timeline.wait 1)
-
-  ;; Main game loop
-  (while (not state.game-over?)
-    (coroutine.yield)
-    (var phase-1-t 0)
-    (while (< phase-1-t 5)
-      (set phase-1-t (+ phase-1-t (coroutine.yield)))
-      (when (= state.state.enemy-count 0)
-        (state.state.director:spawn-enemy-group
-         (vec (love.math.random 50 (- arena-size.x 50))
-              (love.math.random 50 (- arena-size.y 50)))
-         [:basic :basic])))
-    (for [i 1 5]
-      (state.state.director:spawn-enemy-group
-       (vec (love.math.random 50 (- arena-size.x 50))
-            (love.math.random 50 (- arena-size.y 50)))
-       [:basic :basic :basic :basic :basic :basic :basic])))
-  (print :done))
 
 (λ main []
   (set-win-size)
@@ -231,10 +217,7 @@
                 {:pos (vec arena-size.x (/ arena-size.y 2))
                  :size (vec 10 arena-size.y)
                  :category "10000000"
-                 :mask "11111111"}))
-
-  ;; Start main timeline
-  (fire-timeline (game-timeline)))
+                 :mask "11111111"})))
 
 (main)
 

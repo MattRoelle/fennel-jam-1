@@ -19,6 +19,6 @@ end
 table.insert(package.loaders, make_love_searcher(_G))
 table.insert(fennel["macro-searchers"], make_love_searcher("_COMPILER"))
 
-love.window.setMode(720, 450, {fullscreen=true})
+-- love.window.setMode(720, 450, {fullscreen=true})
 
 require("wrap")
