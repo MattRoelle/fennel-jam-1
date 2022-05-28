@@ -52,20 +52,14 @@
   (when e.team
     (tset state.state :teams e.team e.id e))
   (when e.unit-type
-    (set state.state.unit-count (+ state.state.unit-count 1))
-    (tset state.state.units e.unit-type e.id e))
-  (when e.enemy-type
-    (set state.state.enemy-count (+ state.state.enemy-count 1))))
+    (tset state.state.units e.unit-type e.id e)))
 
 (λ index-system.onRemove [self e]
   (tset state.state.idmap e.id nil)
   (when e.team
     (tset state.state :teams e.team e.id nil))
   (when e.unit-type
-    (set state.state.unit-count (- state.state.unit-count 1))
-    (tset state.state.units e.unit-type e.id nil))
-  (when e.enemy-type
-    (set state.state.enemy-count (- state.state.enemy-count 1))))
+    (tset state.state.units e.unit-type e.id nil)))
 
 (tiny.addSystem ecs.world index-system)
 
@@ -169,6 +163,26 @@
 (λ draw-bg []
   (graphics.rectangle (vec 0 0) stage-size (hexcolor :212121ff)))
 
+;; The root game timeline
+(λ game-timeline []
+  ;; Game started, wait for first buy
+  (print :starting)
+  (while (not state.state.started)
+    (coroutine.yield))
+
+  (print :here)
+  (timeline.wait 1)
+
+  ;; Main game loop
+  (while (not state.game-over?)
+    (coroutine.yield)
+    (when (= state.state.enemy-count 0)
+      (state.state.director:spawn-enemy-group
+       (vec (love.math.random 50 (- arena-size.x 50))
+            (love.math.random 50 (- arena-size.y 50)))
+       [:basic :basic])))
+  (print :done))
+
 (λ main []
   (set-win-size)
 
@@ -209,7 +223,10 @@
                 {:pos (vec arena-size.x (/ arena-size.y 2))
                  :size (vec 10 arena-size.y)
                  :category "10000000"
-                 :mask "11111111"})))
+                 :mask "11111111"}))
+
+  ;; Start main timeline
+  (fire-timeline (game-timeline)))
 
 (main)
 

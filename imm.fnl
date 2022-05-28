@@ -14,7 +14,7 @@
         alignment (or props.align :center)]
     (when props.color
       (graphics.print-centered (or props.text "nil")
-                               assets.f16
+                               (or props.font assets.f16)
                                (. rect alignment)
                                props.color))))
 
@@ -72,6 +72,7 @@
 
 (λ shop-button [?state context props]
   "An immediate mode button"
+  (assert props.index "Must pass index")
   (let [bstate (or ?state {:hover false})
         (mouse-down? hovering?) (mouse-interaction context)]
     (set bstate.hover hovering?)
@@ -80,9 +81,7 @@
              (= state.state.hover-shop-btn bstate) nil
              state.state.hover-shop-btn))
     (when (and hovering? mouse-down?)
-      (set state.state.active-shop-btn
-           (if (= state.state.active-shop-btn bstate) nil bstate)))
-      ;(props.on-click))
+      (state.state.director:purchase props.index))
     (set bstate.mouse-down? mouse-down?)
     (graphics.rectangle context.position context.size
                         (if (= state.state.active-shop-btn bstate)

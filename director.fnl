@@ -20,6 +20,18 @@
 (local data (require :data))
 (local aseprite (require :aseprite))
 (local {: get-copy-str} (require :copy))
+(local assets (require :assets))
+
+(λ start-game-prompt []
+  (when (not state.state.started)
+    (let [sz (vec 400 200)]
+      [view {:display :flex
+             :position (- center-stage (/ sz 2) (vec 0 80))
+             :size sz
+             :color (rgba 0 0 0 1)
+             :padding (vec 4 4)}
+       [[text {:text "Purchase a unit to begin"
+               :color (rgba 1 1 1 1)}]]])))
 
 (λ tooltip []
   (when state.state.hover-shop-btn
@@ -56,6 +68,16 @@
                (imm-stateful button state.state.units [k :bstate]
                              {:label :Promote})]]))))]]])
 
+(λ top-row []
+  [view {:display :stack
+         :direction :right
+         :position (vec -440 (- stage-size.y 192))
+         :padding (vec 8 0)
+         :size (vec stage-size.x 110)}
+   [[text {:text (.. "$" (tostring state.state.money))
+           :font assets.f32      
+           :color (rgba 1 1 1 1)}]]])
+
 (λ shop-row []
   [view {:display :stack
          :direction :right
@@ -69,7 +91,8 @@
             :size (vec 100 100)}
       [(imm-stateful shop-button
                      state.state.shop-row [ix]
-                     {:label btn.label})]])])
+                     {:label btn.label
+                      :index ix})]])])
 
 (local Director {})
 (set Director.__index Director)
@@ -137,11 +160,11 @@
 (λ Director.roll-shop [self]
   (set state.state.shop-row [])
   (table.insert state.state.shop-row
-                {:cost 3 :group [:warrior :warrior :warrior]
-                 :label "3 warriors"})
+                {:cost 3 :group [:warrior]
+                 :label "Warrior"})
   (table.insert state.state.shop-row
-                {:cost 3 :group [:shooter :shooter :shooter]
-                 :label "3 shooters"}))
+                {:cost 3 :group [:shooter]
+                 :label "Shooter"}))
 
 (λ Director.arena-draw [self]
   (when state.active-shop-btn
@@ -158,7 +181,9 @@
                                                           [:basic :basic :basic :basic :basic :basic])
                        :position (vec 10 10)})
         (unit-list)
+        (top-row)
         (shop-row)
+        (start-game-prompt)
         (tooltip)]]])
    (let [fps (love.timer.getFPS)]
      (love.graphics.setColor 1 0 0 1)
@@ -166,7 +191,24 @@
      (love.graphics.setColor 0 1 0 1)
      (love.graphics.print (tostring state.state.unit-count) 40 4)))
 
+(λ Director.add-gold [self v]
+  (set state.state.money (+ state.state.money v))
+  (fire-timeline
+    (local txt {:pos (vec -50 370)
+                :id (tostring (get-id))
+                :z-index 100
+                :__timers {:spawn {:t 0 :active true}}
+                :arena-draw
+                (λ [self]
+                  (graphics.print-centered "+1" assets.f32
+                                           (+ self.pos (vec 0 (* self.timers.spawn.t -50)))
+                                           (rgba 1 1 0 (- 1 self.timers.spawn.t))))})
+    (tiny.addEntity ecs.world txt)
+    (timeline.wait 1)
+    (set txt.dead true)))
+
 (λ Director.spawn-enemy-group [self pos group]
+  (set state.state.enemy-count (+ state.state.enemy-count (length group)))
   (fire-timeline
     (local img {: pos
                 :id (tostring (get-id))
@@ -183,12 +225,32 @@
                       (new-entity Enemy {: pos : enemy-type})))
     (set img.dead true)))
 
+(λ Director.spawn-group [self pos group]
+  (set state.state.started true)
+  (set state.state.unit-count (+ state.state.unit-count (length group)))
+  (fire-timeline
+    (local img {: pos
+                :id (tostring (get-id))
+                :z-index 100
+                :__timers {:spawn {:t 0 :active true}}
+                :arena-draw
+                (λ [self]
+                  (when (= 0 (% (math.floor (* self.timers.spawn.t 10)) 2))
+                    (graphics.image aseprite.spawn self.pos)))})
+    (tiny.addEntity ecs.world img)
+    (timeline.wait 1)
+    (each [_ unit-type (ipairs group)]
+      (tiny.addEntity ecs.world
+                      (new-entity Unit {: pos : unit-type})))
+    (set img.dead true)))
 
-(λ Director.spawn-group [self group]
-  (each [_ unit-type (ipairs group)]
-    (tiny.addEntity ecs.world
-                    (new-entity Unit {:pos state.state.arena-mpos
-                                                                                      : unit-type}))))
+
+(λ Director.purchase [self index]
+  (let [shop-item (. state.state.shop-row index)]
+    (when (> state.state.money shop-item.cost)
+      (set state.state.money (- state.state.money shop-item.cost))
+      (self:screen-shake)
+      (self:spawn-group (/ arena-size 2) shop-item.group))))
 
 (λ Director.update [self dt]
   (input:update)
