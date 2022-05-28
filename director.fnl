@@ -45,7 +45,7 @@
              :padding (vec 4 4)}
        [[text {:text "Choose Upgrade"
                :font assets.f32
-               :color (rgba 1 1 1 1)}]
+               :color (rgba 0 0 0 1)}]
         [view {:display :flex}
           (icollect [ix upgrade (ipairs state.state.upgrade-choices)]
             [view {:display :flex
@@ -74,8 +74,7 @@
          :position (vec 10 10)
          :size (vec arena-margin.x stage-size.y)
          :padding (vec 4 4)}
-   [[view {:color (rgba 0.5 0.3 0.3 1)
-           :display :stack
+   [[view {:display :stack
            :direction :down}
      (icollect [k v (pairs state.state.upgrades)]
        [text {:size (vec 80 20)
@@ -87,7 +86,7 @@
          :position (vec (- stage-size.x arena-margin.x) (/ arena-margin.y 2))
          :size (vec arena-margin.x stage-size.y)
          :padding (vec 4 4)}
-   [[view {:color (rgba 0.5 0.3 0.3 1)
+   [[view {:color (rgba 0.5 0.3 0.3 0)
            :display :stack
            :direction :down
            :size (vec 800 100)}
@@ -318,7 +317,7 @@
 
 (λ Director.purchase [self index]
   (let [shop-item (. state.state.shop-row index)]
-    (when (> state.state.money shop-item.cost)
+    (when (>= state.state.money shop-item.cost)
       (set state.state.money (- state.state.money shop-item.cost))
       (self:screen-shake)
       (self:spawn-group (/ arena-size 2) shop-item.group)

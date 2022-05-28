@@ -9,7 +9,6 @@
    :group-options [[:basic :basic] [:basic :basic :basic]]
    :waves [{:groups 1}]}
   {:type :upgrade}
-  {:type :upgrade}
   {:type :combat
    :group-options [[:basic :basic :basic :basic] [:brute-1]]
    :waves [{:groups 1} {:groups 2}]}

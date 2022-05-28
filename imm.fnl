@@ -1,3 +1,5 @@
+(import-macros {: fire-timeline : imm-stateful} :macros)
+
 (local state (require :state))
 (local {: layout : get-layout-rect} (require :imgui))
 (local {: vec : polar-vec2} (require :vector))
@@ -7,6 +9,7 @@
 (local aabb (require :aabb))
 (local input (require :input))
 (local assets (require :assets))
+(local timeline (require :timeline))
 
 (λ text [context props]
   "Basic text component"
@@ -50,23 +53,24 @@
 
 (λ button [?state context props]
   "An immediate mode button"
-  (let [bstate (or ?state {:hover false})
+  (let [bstate (or ?state {:hover false :scale 0.85})
         (mouse-down? hovering?) (mouse-interaction context)]
     (set bstate.hover hovering?)
     (when (and props.on-click hovering? mouse-down?)
       (props.on-click))
+    (when (not ?state)
+      (fire-timeline
+       (timeline.tween 0.3 bstate {:scale 1} :outQuad)))
     (set bstate.mouse-down? mouse-down?)
+    (love.graphics.push)
+    ;(love.graphics.scale bstate.scale bstate.scale)
     (graphics.rectangle context.position context.size
                         (if bstate.hover
                             (rgba 0.4 0.4 0.4 1)
                             (rgba 0.2 0.2 0.2 1)))
-    (love.graphics.rectangle :fill
-                            (+ context.position.x props.padding.x)
-                            (+ context.position.y props.padding.y)
-                            (- context.size.x (* props.padding.x 2))
-                            (- context.size.y (* props.padding.y 2)))
     (love.graphics.setColor 1 1 1 1)
     (love.graphics.print (or props.label "na") context.position.x context.position.y)
+    (love.graphics.pop)
     bstate))
 
 
