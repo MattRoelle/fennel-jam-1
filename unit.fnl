@@ -59,6 +59,9 @@
        :warrior (rgba 0 1 0 1)
        :shooter (rgba 0 0 1 1)
        _ (rgba 1 1 1 1)))
+    (when (or (= self.unit-type :warrior))
+      (graphics.rectangle (- p (vec 8 8)) (vec 16 16)
+                          (rgba 0 1 0 1)))
     (when (or (= self.unit-type :pulse))
       (graphics.circle
        p 70 (rgba 1 0 1 0.1)))
@@ -153,7 +156,8 @@
 
 (λ Enemy.destroy [self]
   (state.state.director:add-gold 1)
-  (state.state.director:loot self)
+  (when (> (math.random) 0.5)
+    (state.state.director:loot self))
   (print :here)
   (set state.state.enemy-count
        (- state.state.enemy-count 1)))

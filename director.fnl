@@ -160,10 +160,16 @@
                       (love.math.random (- intensity) intensity)))
             (set t (+ t (coroutine.yield))))))))
 
+(λ Director.clamp-shop [self]
+  (while (> (length state.state.shop-row) 8)
+    (table.remove state.state.shop-row (length state.state.shop-row))))
+
 (λ Director.loot [self]
-  (table.insert state.state.shop-row
-                {:cost 3 :group [:warrior]
-                 :label "Warrior"}))
+  (let [k (lume.randomchoice (lume.keys data.unit-types))]
+    (table.insert state.state.shop-row
+                  {:cost 3 :group [k]
+                   :label k}))
+  (self:clamp-shop))
 
 (λ Director.buy-roll-shop [self]
   (when (> state.state.money 0)
@@ -179,7 +185,8 @@
                  :label "Warrior"})
   (table.insert state.state.shop-row
                 {:cost 3 :group [:shooter]
-                 :label "Shooter"}))
+                 :label "Shooter"})
+  (self:clamp-shop))
 
 (λ Director.arena-draw [self]
   (when state.active-shop-btn

@@ -176,11 +176,19 @@
   ;; Main game loop
   (while (not state.game-over?)
     (coroutine.yield)
-    (when (= state.state.enemy-count 0)
+    (var phase-1-t 0)
+    (while (< phase-1-t 5)
+      (set phase-1-t (+ phase-1-t (coroutine.yield)))
+      (when (= state.state.enemy-count 0)
+        (state.state.director:spawn-enemy-group
+         (vec (love.math.random 50 (- arena-size.x 50))
+              (love.math.random 50 (- arena-size.y 50)))
+         [:basic :basic])))
+    (for [i 1 5]
       (state.state.director:spawn-enemy-group
        (vec (love.math.random 50 (- arena-size.x 50))
             (love.math.random 50 (- arena-size.y 50)))
-       [:basic :basic])))
+       [:basic :basic :basic :basic :basic :basic :basic])))
   (print :done))
 
 (λ main []
