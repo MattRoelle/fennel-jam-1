@@ -1,8 +1,9 @@
 (local copy
        {:en
         {:units
-         {:warrior "Charges at a random enemy every 1 second"
-          :shooter "Shoots at a random enemy every 2 seconds"}
+         {:warrior "Charges at random enemy"
+          :shooter "Shoots at random enemy"
+          :pulse "Shoots a burst at units in range"}
          :enemies
          {:basic "Charges at a random unit every 1 second"}}})
 

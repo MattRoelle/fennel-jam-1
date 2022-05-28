@@ -41,7 +41,7 @@
              :size sz
              :color (rgba 0 0 0 1)
              :padding (vec 4 4)}
-       [[text {:text (get-copy-str :en :units :shooter)
+       [[text {:text (get-copy-str :en :units (. state.state.hover-shop-btn.group 1))
                :color (rgba 1 1 1 1)}]]])))
 
 (λ unit-list []
@@ -139,6 +139,7 @@
 
 (λ Director.init [self]
   (self:roll-shop)
+  (self:roll-shop)
   (state.state.pworld:setCallbacks
     #(self:begin-contact $...)
     #(self:end-contact $...)
@@ -170,6 +171,9 @@
     (self:roll-shop)))
 
 (λ Director.roll-shop [self]
+  (table.insert state.state.shop-row
+                {:cost 3 :group [:pulse]
+                 :label "Pulse"})
   (table.insert state.state.shop-row
                 {:cost 3 :group [:warrior]
                  :label "Warrior"})

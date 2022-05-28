@@ -73,6 +73,8 @@
 (λ shop-button [?state context props]
   "An immediate mode button"
   (assert props.index "Must pass index")
+  (when (not (. state.state.shop-row props.index))
+    (do (lua :return)))
   (let [bstate (or ?state {:hover false})
         (mouse-down? hovering?) (mouse-interaction context)]
     (set bstate.hover hovering?)

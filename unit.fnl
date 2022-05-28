@@ -59,6 +59,9 @@
        :warrior (rgba 0 1 0 1)
        :shooter (rgba 0 0 1 1)
        _ (rgba 1 1 1 1)))
+    (when (or (= self.unit-type :pulse))
+      (graphics.circle
+       p 70 (rgba 1 0 1 0.1)))
     (graphics.print-centered self.hp assets.f16 (+ p (vec 0 20)) (rgba 1 1 1 1))
     (when (> self.flash-t 0)
       (graphics.circle
@@ -82,6 +85,21 @@
     (tiny.addEntity ecs.world (new-entity Projectile
                                           {:pos (vec x y)
                                            :direction iv}))))
+
+(λ Unit.get-enemies-in-range [self r]
+  (let [(x y) (self.box2d.body:getPosition)]
+    (icollect [k v (pairs state.state.teams.enemy)]
+      (let [(x2 y2) (v.box2d.body:getPosition)]
+        (when (< (: (vec x y) :distance-to (vec x2 y2)) (or self.pulse-radius 70))
+          v)))))
+          
+
+(λ Unit.pulse-update [self dt]
+  (when (> self.timers.shoot-tick.t 2)
+    (set self.timers.shoot-tick.t 0)
+    (each [_ e (ipairs (self:get-enemies-in-range (or self.pulse-radius 64)))]
+      (when e
+        (self:shoot-enemy e)))))
 
 (λ Unit.shoot-update [self dt]
   (when (> self.timers.shoot-tick.t 0.5)
@@ -118,7 +136,8 @@
    (set self.dead true))
   (match self.unit-type
     :warrior (self:bump-update dt)
-    :shooter (self:shoot-update dt)))
+    :shooter (self:shoot-update dt)
+    :pulse (self:pulse-update dt)))
 
 (set Unit.__defaults
      {:z-index 10
