@@ -3,6 +3,7 @@
         {:units
          {:warrior "Charges at random enemy"
           :shooter "Shoots at random enemy"
+          :shotgunner "Shoots a burst at random enemy"
           :pulse "Shoots a burst at units in range"}
          :enemies
          {:basic "Charges at a random unit every 1 second"}}})

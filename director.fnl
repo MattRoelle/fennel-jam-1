@@ -293,21 +293,23 @@
 (λ Director.spawn-group [self pos group]
   (set state.state.started true)
   (set state.state.unit-count (+ state.state.unit-count (length group)))
-  (fire-timeline
-    (local img {: pos
-                :id (tostring (get-id))
-                :z-index 100
-                :__timers {:spawn {:t 0 :active true}}
-                :arena-draw
-                (λ [self]
-                  (when (= 0 (% (math.floor (* self.timers.spawn.t 10)) 2))
-                    (graphics.image aseprite.spawn self.pos)))})
-    (tiny.addEntity ecs.world img)
-    (timeline.wait 1)
-    (each [_ unit-type (ipairs group)]
-      (tiny.addEntity ecs.world
-                      (new-entity Unit {: pos : unit-type})))
-    (set img.dead true)))
+  (let [p (+ pos (vec (love.math.random -100 100)
+                      (love.math.random -100 100)))]
+    (fire-timeline
+      (local img {:pos p
+                  :id (tostring (get-id))
+                  :z-index 100
+                  :__timers {:spawn {:t 0 :active true}}
+                  :arena-draw
+                  (λ [self]
+                    (when (= 0 (% (math.floor (* self.timers.spawn.t 10)) 2))
+                      (graphics.image aseprite.spawn self.pos)))})
+      (tiny.addEntity ecs.world img)
+      (timeline.wait 1)
+      (each [_ unit-type (ipairs group)]
+        (tiny.addEntity ecs.world
+                        (new-entity Unit {:pos p : unit-type})))
+      (set img.dead true))))
 
 (λ Director.choose-upgrade [self upgrade]
   (set state.state.upgrade-screen-open? false)

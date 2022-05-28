@@ -103,15 +103,25 @@
 ;; arena-draw system handles drawing in order of highest-to-lowest z-index
 ;; draws to arena canvas
 (local arena-canvas (love.graphics.newCanvas arena-size.x arena-size.y))
+(local arena-canvas-entities (love.graphics.newCanvas arena-size.x arena-size.y))
 (arena-canvas:setFilter :nearest :nearest)
+(arena-canvas-entities:setFilter :nearest :nearest)
 (local arena-draw-system (tiny.sortedProcessingSystem))
 (set arena-draw-system.filter (tiny.requireAll :arena-draw :z-index))
 
 (local arena-shader-code
     "
+float res = 0.0025;
+float threshold = 0.1;
 vec4 effect(vec4 color, Image tex, vec2 texture_coords, vec2 screen_coords)
 {
     vec4 texturecolor = Texel(tex, texture_coords);
+    vec4 up = Texel(tex, texture_coords+vec2(0,-res));
+    vec4 right = Texel(tex, texture_coords+vec2(res,0));
+    vec4 upright = Texel(tex, texture_coords+vec2(res,-res));
+    if (texturecolor.a < threshold && (up.a > threshold || right.a > threshold || upright.a > threshold)) {
+      return vec4(0,0,0,1);
+    }
     return texturecolor * color;
 }
     ")
@@ -119,24 +129,28 @@ vec4 effect(vec4 color, Image tex, vec2 texture_coords, vec2 screen_coords)
 (local arena-shader (love.graphics.newShader arena-shader-code))
 
 (λ arena-draw-system.preProcess [self]
-  (set self.old-canvas (love.graphics.getCanvas))
-  (set self.old-shader (love.graphics.getShader))
-  (love.graphics.setCanvas arena-canvas)
+  (love.graphics.setCanvas arena-canvas-entities)
   (love.graphics.setShader arena-shader)
   (love.graphics.push)
-  (love.graphics.origin)
-  (love.graphics.setColor 0.07 0.07 0.07 1)
-  (love.graphics.rectangle :fill 0 0 arena-size.x arena-size.y)
-  (love.graphics.setColor 1 1 1 1)
-  (love.graphics.translate state.state.camera-shake.x state.state.camera-shake.y))
+  (love.graphics.clear)
+  (love.graphics.origin))
 
 (λ arena-draw-system.process [self e dt]
   (e:arena-draw))
 
 (λ arena-draw-system.postProcess [self]
   (love.graphics.pop)
-  (love.graphics.setCanvas self.old-canvas)
-  (love.graphics.setShader self.old-shader))
+  (love.graphics.setCanvas arena-canvas)
+  (love.graphics.push)
+  (love.graphics.origin)
+  (love.graphics.setColor 0.2 0.2 0.2 1)
+  (love.graphics.rectangle :fill 0 0 arena-size.x arena-size.y)
+  (love.graphics.setColor 1 1 1 1)
+  (love.graphics.translate state.state.camera-shake.x state.state.camera-shake.y)
+  (love.graphics.draw arena-canvas-entities)
+  (love.graphics.pop)
+  (love.graphics.setCanvas)
+  (love.graphics.setShader))
 
 (λ arena-draw-system.compare [self e1 e2]
   (> e1.z-index e2.z-index))

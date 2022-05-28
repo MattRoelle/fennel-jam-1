@@ -23,7 +23,7 @@
                 :arena-draw
                 (λ [self]
                   (graphics.print-centered s (or ?font assets.f32)
-                                           (+ self.pos (vec 0 (* self.timers.spawn.t -50)))
+                                           (+ self.pos (vec 0 (* self.timers.spawn.t -200)))
                                            (rgba color.r color.g color.b (- 1 self.timers.spawn.t))))})
     (tiny.addEntity ecs.world txt)
     (timeline.wait 1)

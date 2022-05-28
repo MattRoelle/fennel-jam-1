@@ -54,6 +54,7 @@
                                 :linear-damping
                                 (match self.unit-type
                                   :pulse 0
+                                  :shotgunner 1.5
                                   :shooter 1.5
                                   _ 0.5)
                                 :mass
@@ -80,6 +81,7 @@
          (* self.box2d.radius 1.4))
      (match (values self.unit-type self.enemy-type)
        (:warrior _) palette.default.green
+       (:shotgunner _) palette.default.blue
        (:shooter _) palette.default.blue
        (:pulse _) palette.default.teal
        (_ :basic) palette.default.red
@@ -90,7 +92,7 @@
                           (rgba 0 1 0 1)))
     (when (or (= self.unit-type :pulse))
       (graphics.circle
-       p 70 (rgba 1 0 1 0.05)))
+       p 70 (rgba 0 1 1 0.2)))
     (when self.unit-type
       (graphics.print-centered self.hp assets.f16 (+ p (vec 0 20)) (rgba 1 1 1 1)))
     (when (> self.flash-t 0)
@@ -106,15 +108,16 @@
       (self.box2d.body:applyLinearImpulse iv.x iv.y))))
 
 (λ Unit.shoot-enemy [self e]
-  (let [(ex ey) (e.box2d.body:getPosition)
-        ep (vec ex ey)
-        (x y) (self.box2d.body:getPosition)
-        p (vec x y)
-        angle (p:angle-to ep)
-        iv (polar-vec2 angle 1)]
-    (tiny.addEntity ecs.world (new-entity Projectile
-                                          {:pos (vec x y)
-                                           :direction iv}))))
+  (for [i 1 3]
+    (let [(ex ey) (e.box2d.body:getPosition)
+          ep (vec ex ey)
+          (x y) (self.box2d.body:getPosition)
+          p (vec x y)
+          angle (p:angle-to ep)
+          iv (polar-vec2 angle 1)]
+      (tiny.addEntity ecs.world
+                      (new-entity Projectile
+                                  {:pos (vec x y) :direction iv})))))
 
 (λ Unit.get-enemies-in-range [self r]
   (let [(x y) (self.box2d.body:getPosition)]
@@ -173,6 +176,7 @@
   (match self.unit-type
     :warrior (self:bump-update dt)
     :shooter (self:shoot-update dt)
+    :shotgunner (self:shoot-update dt)
     :pulse (self:pulse-update dt)))
 
 (set Unit.__defaults
