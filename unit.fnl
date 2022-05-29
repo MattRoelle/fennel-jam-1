@@ -151,7 +151,7 @@
     (set self.timers.move-tick.t 0)
     (let [iv (polar-vec2 (* (math.random) 2 math.pi) 16)]
       (self.box2d.body:applyLinearImpulse iv.x iv.y)))
-  (when (> self.timers.shoot-tick.t 2)
+  (when (> self.timers.shoot-tick.t (or self.def.fire-rate 2))
     (set self.timers.shoot-tick.t 0)
     (when (> state.state.enemy-count 0)
       (let [e-id (lume.randomchoice (lume.keys state.state.teams.enemy))

@@ -215,11 +215,21 @@
     (set state.state.money (- state.state.money 1))
     (self:roll-shop)))
 
+(λ Director.get-shop-tier [self] 2)
+  ;(if (> state.state.level 4) 2 1))
+
+(λ Director.generate-shop-unit [self]
+  (let [tier (self:get-shop-tier)
+        choices
+        (icollect [k v (pairs data.unit-types)]
+          (when (<= v.tier tier) k))]
+    (lume.randomchoice choices)))
+
 (λ Director.roll-shop [self]
   (set state.state.shop-row [])
   (fire-timeline
    (for [i 1 5]
-     (let [u (lume.randomchoice (lume.keys data.unit-types))]
+     (let [u (self:generate-shop-unit)]
        (table.insert state.state.shop-row
                        {:cost 3 :group [u]
                         :label u}))
@@ -287,8 +297,8 @@
 (λ Director.spawn-group [self pos group]
   (set state.state.started true)
   (set state.state.unit-count (+ state.state.unit-count (length group)))
-  (let [p (+ pos (vec (love.math.random -100 100)
-                      (love.math.random -100 100)))]
+  (let [p (+ pos (vec (love.math.random -50 50)
+                      (love.math.random -50 50)))]
     (fire-timeline
       (local img {:pos p
                   :id (tostring (get-id))
