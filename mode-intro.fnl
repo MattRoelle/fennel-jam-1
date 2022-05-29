@@ -237,21 +237,25 @@ vec4 effect(vec4 color, Image tex, vec2 texture_coords, vec2 screen_coords)
     (new-entity Box2dRectangle
                 {:pos (vec (/ arena-size.x 2) arena-size.y)
                  :size (vec arena-size.x 10)
+                 :wall true
                  :category "10000000"
                  :mask "11111111"})
     (new-entity Box2dRectangle
                 {:pos (vec (/ arena-size.x 2) 0)
                  :size (vec arena-size.x 10)
+                 :wall true
                  :category "10000000"
                  :mask "11111111"})
     (new-entity Box2dRectangle
                 {:pos (vec 0 (/ arena-size.y 2))
                  :size (vec 10 arena-size.y)
+                 :wall true
                  :category "10000000"
                  :mask "11111111"})
     (new-entity Box2dRectangle
                 {:pos (vec arena-size.x (/ arena-size.y 2))
                  :size (vec 10 arena-size.y)
+                 :wall true
                  :category "10000000"
                  :mask "11111111"})))
 

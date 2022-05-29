@@ -105,7 +105,14 @@
                             (- context.size.x (* props.padding.x 2))
                             (- context.size.y (* props.padding.y 2)))
     (let [r (get-layout-rect context)]
-      (graphics.print-centered (or props.label "NA") assets.f16 r.center (rgba 1 1 1 1)))
+      (graphics.print-centered (or props.label "NA") assets.f16
+                               (+ r.center (vec 0 -16))
+                               (rgba 1 1 1 1))
+      (graphics.print-centered
+       (.. "$" props.cost)
+       assets.f16
+       (+ r.center (vec 0 8))
+       (rgba 1 1 1 1)))
     bstate))
 
 

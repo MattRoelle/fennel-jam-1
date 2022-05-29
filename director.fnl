@@ -131,6 +131,7 @@
              [(imm-stateful shop-button
                             state.state.shop-row [ix]
                             {:label btn.label
+                             :cost btn.cost
                              :index ix})]]])]))])
 
 (local Director {})
@@ -155,8 +156,13 @@
             (and (= ea.team :player) (= eb.team :enemy))
             (values :bump-player-enemy ea eb)
             (and (= eb.team :player) (= ea.team :enemy))
-            (values :bump-player-enemy eb ea))]
+            (values :bump-player-enemy eb ea)
+            (and eb.wall ea.bullet)
+            (values :bullet-wall ea nil)
+            (and ea.wall eb.bullet)
+            (values :bullet-wall eb nil))]
     (match collision-type
+      :bullet-wall (set A.dead true)
       :bump-player-enemy (self:attack-bump A B)
       :player-bullet-to-enemy (self:bullet-hit A B))))
 
@@ -200,7 +206,7 @@
 (λ Director.loot [self]
   (let [k (lume.randomchoice (lume.keys data.unit-types))]
     (table.insert state.state.shop-row
-                  {:cost 1 :group [k]
+                  {:cost 3 :group [k]
                    :label k}))
   (self:clamp-shop))
 
@@ -215,7 +221,7 @@
    (for [i 1 5]
      (let [u (lume.randomchoice (lume.keys data.unit-types))]
        (table.insert state.state.shop-row
-                       {:cost 1 :group [u]
+                       {:cost 3 :group [u]
                         :label u}))
      (self:clamp-shop)
      (timeline.wait 0.2))))
@@ -231,10 +237,10 @@
                       {:label "End Turn"
                        :disabled (not= :shop state.state.phase)
                        :size (vec 60 60)
-                       :on-click #(set state.state.phase :combat)
+                       :on-click #(self:end-turn)
                        :position (vec 10 210)})
         (imm-stateful button state.state [:reroll-shop-btn]
-                      {:label :reroll
+                      {:label "Reroll 1"
                        :disabled (not= :shop state.state.phase)
                        :size (vec 60 60)
                        :on-click #(self:buy-roll-shop)
@@ -352,7 +358,9 @@
   (while (= :shop state.state.phase)
     (coroutine.yield)))
 
-(λ Director.end-turn [self])
+(λ Director.end-turn [self]
+  (set state.state.shop-row [])
+  (set state.state.phase :combat))
 
 (λ Director.main-timeline [self]
   ;; Main game loop

@@ -91,6 +91,25 @@
                   :radius 6
                   :body-type :static}))
 
+(local Box2dPolygon (setmetatable {} Box2dEntity))
+(set Box2dPolygon.__index Box2dPolygon)
+
+(λ Box2dPolygon.init [self ?id]
+  (assert self.points "Must pass points")
+  (set self.id (or ?id self.id))
+  (self:create-body)
+  (set self.shape (love.physics.newPolygonShape (unpack self.points)))
+  (self:init-properties))
+
+(set Box2dPolygon.__defaults
+     (lume.merge Box2dEntity.__defaults
+                 {:z-index 10
+                  :pos (vec 32 32)
+                  :shape-type :polygon
+                  :radius 6
+                  :body-type :static}))
+
 {: Box2dEntity
  : Box2dRectangle
- : Box2dCircle}
+ : Box2dCircle
+ : Box2dPolygon}

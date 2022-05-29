@@ -5,7 +5,7 @@
 (local {: rgba : hexcolor} (require :color))
 (local lume (require :lib.lume))
 (local {: new-entity} (require :helpers))
-(local {: Box2dCircle : Box2dRectangle} (require :wall))
+(local {: Box2dCircle : Box2dRectangle : Box2dPolygon} (require :wall))
 (local state (require :state))
 (local data (require :data))
 (local timeline (require :timeline))
@@ -46,41 +46,51 @@
   (set self.bump-force (or self.def.bump-force 64))
 
   (set self.box2d
-       (new-entity Box2dCircle {:radius (or self.def.radius 8)
-                                :size (or self.def.size (vec 8 8))
-                                :pos self.pos
-                                :body-type :dynamic
-                                :angular-damping (or self.def.angular-damping 1)
-                                :linear-damping (or self.def.linear-damping 1.5)
-                                :mass (or self.def.mass 1)
-                                :restitution (or self.def.restitution 0.99)
-                                :category "00000001"
-                                :mask "10001011"}))
+       (new-entity
+        (match self.unit-type
+          :warrior Box2dCircle
+          _ Box2dPolygon)
+        {:radius (or self.def.radius 8)
+         :points
+         (match self.unit-type
+           _ [-10 0 0 -10 10 0 0 10])
+         :size (or self.def.size (vec 8 8))
+         :pos self.pos
+         :body-type :dynamic
+         :angular-damping (or self.def.angular-damping 1)
+         :linear-damping (or self.def.linear-damping 1.5)
+         :mass (or self.def.mass 1)
+         :restitution (or self.def.restitution 0.99)
+         :category "00000001"
+         :mask "10001011"}))
   (self.box2d:init self.id)
   (let [iv (polar-vec2 (* (math.random) 2 math.pi) 20)]
     (self.box2d.body:applyLinearImpulse iv.x iv.y)))
 
 
+(λ Unit.get-unit-color [self]
+  (match (values self.unit-type self.enemy-type)
+    ;; (:warrior _) palette.index.ix2
+    ;; (:shotgunner _) palette.index.ix3
+    ;; (:shooter _) palette.index.ix3
+    ;; (:pulse _) palette.index.ix5
+    ;; (_ :basic) palette.index.ix8
+    ;; (_ :brute-1) palette.index.ix9
+    ;; (_ _) palette.index.ix10
+    (:warrior _) (rgba 0 0 1 1)
+    (:shotgunner _) (rgba 0 1 0 1)
+    (:shooter _) (rgba 0 1 0 1)
+    (:pulse _) (rgba 1 1 0 1)
+    (_ :basic) (rgba 1 0 0 1)
+    (_ :brute-1) (rgba 1 0.25 0 1)
+    (_ :square-1) (rgba 1 0 0 1)
+    (_ _) palette.index.ix10))
+
 (λ Unit.arena-draw [self]
   (let [(x y) (self.box2d.body:getPosition)
-        p (vec x y)]
-    (self.box2d:draw-world-points
-      (match (values self.unit-type self.enemy-type)
-        ;; (:warrior _) palette.index.ix2
-        ;; (:shotgunner _) palette.index.ix3
-        ;; (:shooter _) palette.index.ix3
-        ;; (:pulse _) palette.index.ix5
-        ;; (_ :basic) palette.index.ix8
-        ;; (_ :brute-1) palette.index.ix9
-        ;; (_ _) palette.index.ix10
-        (:warrior _) (rgba 0 0 1 1)
-        (:shotgunner _) (rgba 0 1 0 1)
-        (:shooter _) (rgba 0 1 0 1)
-        (:pulse _) (rgba 1 1 0 1)
-        (_ :basic) (rgba 1 0 0 1)
-        (_ :brute-1) (rgba 1 0.25 0 1)
-        (_ :square-1) (rgba 1 0 0 1)
-        (_ _) palette.index.ix10))
+        p (vec x y)
+        c (self:get-unit-color)] 
+    (self.box2d:draw-world-points c)
     (when (or (= self.unit-type :pulse))
       (graphics.stroke-circle
        p 70 2 (rgba 0 1 1 1)))
@@ -113,8 +123,8 @@
           (match self.unit-type
             :shotgunner (polar-vec2
                          (+ angle (* (- i 2) 0.2))
-                         1.5 (+ (* (math.random) 1)))
-            _ (polar-vec2 (+ angle wobble) 1))]
+                         2 (+ (* (math.random) 1)))
+            _ (polar-vec2 (+ angle wobble) 3))]
        (tiny.addEntity ecs.world
                        (new-entity Projectile
                                    {:pos (vec x y)
@@ -139,7 +149,7 @@
 (λ Unit.shoot-update [self dt]
   (when (> self.timers.move-tick.t 2)
     (set self.timers.move-tick.t 0)
-    (let [iv (polar-vec2 (* (math.random) 2 math.pi) 10)]
+    (let [iv (polar-vec2 (* (math.random) 2 math.pi) 16)]
       (self.box2d.body:applyLinearImpulse iv.x iv.y)))
   (when (> self.timers.shoot-tick.t 2)
     (set self.timers.shoot-tick.t 0)
@@ -150,7 +160,7 @@
           (self:shoot-enemy e))))))
 
 (λ Unit.destroy [self]
-  (effects.box2d-explode (self:get-body-pos) 10 4 (rgba 1 1 1 1))
+  (effects.box2d-explode (self:get-body-pos) 5 4 (rgba 1 1 1 1))
   (self.box2d.body:destroy)
   (set state.state.unit-count (- state.state.unit-count 1)))
 
@@ -164,10 +174,11 @@
     (self.box2d.body:applyLinearImpulse iv.x iv.y)))
 
 (λ Unit.bump-update [self dt]
-  (when (and (> state.state.enemy-count 0) (> self.timers.move-tick.t (or self.def.bump-timer 1.75)))
+  (when (and (> self.timers.move-tick.t (or self.def.bump-timer 1.75)))
     (set self.timers.move-tick.t 0)
-    (let [e-id (lume.randomchoice (lume.keys state.state.teams.enemy))
-          e (. state.state.teams.enemy e-id)]
+    (let [target-team (if (= :player self.team) :enemy :player)
+          e-id (lume.randomchoice (lume.keys (. state.state.teams target-team)))
+          e (. state.state.teams target-team e-id)]
       (when e
         (self:bump-enemy e)))))
 
@@ -193,7 +204,7 @@
 (set Enemy.__index Enemy)
 
 (λ Enemy.destroy [self]
-  (effects.box2d-explode (self:get-body-pos) 10 4 (rgba 1 0 0 1))
+  (effects.box2d-explode (self:get-body-pos) 5 4 (rgba 1 0 0 1))
   ;; (when (< (math.random) 0.1)
   ;;   (state.state.director:add-gold 1))
   (self.box2d.body:destroy)
@@ -206,7 +217,7 @@
   (when (<= self.hp 0)
     (set self.dead true))
   (match self.enemy-type
-    :basic (self:bump-update dt)))
+    _ (self:bump-update dt)))
 
 (λ Enemy.init [self]
   (assert self.enemy-type :must-pass-enemy-type)
