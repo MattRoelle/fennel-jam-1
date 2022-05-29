@@ -26,8 +26,8 @@
 
 (λ Unit.take-dmg [self v]
   (set self.hp (- self.hp v))
-  (effects.text-flash (.. "-" v) (- (self:get-body-pos) (vec 4 0))
-                      (rgba 1 1 1 1) assets.f32)
+  ;; (effects.text-flash (.. "-" v) (- (self:get-body-pos) (vec 4 0))
+  ;;                     (rgba 1 1 1 1) assets.f32)
   (self:flash))
 
 (λ Unit.flash [self]
@@ -66,13 +66,21 @@
         p (vec x y)]
     (self.box2d:draw-world-points
       (match (values self.unit-type self.enemy-type)
-        (:warrior _) palette.default.green
-        (:shotgunner _) palette.default.blue
-        (:shooter _) palette.default.blue
-        (:pulse _) palette.default.teal
-        (_ :basic) palette.default.red
-        (_ :brute-1) palette.default.red
-        (_ _) (rgba 1 1 1 1)))
+        ;; (:warrior _) palette.index.ix2
+        ;; (:shotgunner _) palette.index.ix3
+        ;; (:shooter _) palette.index.ix3
+        ;; (:pulse _) palette.index.ix5
+        ;; (_ :basic) palette.index.ix8
+        ;; (_ :brute-1) palette.index.ix9
+        ;; (_ _) palette.index.ix10
+        (:warrior _) (rgba 0 0 1 1)
+        (:shotgunner _) (rgba 0 1 0 1)
+        (:shooter _) (rgba 0 1 0 1)
+        (:pulse _) (rgba 1 1 0 1)
+        (_ :basic) (rgba 1 0 0 1)
+        (_ :brute-1) (rgba 1 0.25 0 1)
+        (_ :square-1) (rgba 1 0 0 1)
+        (_ _) palette.index.ix10))
     (when (or (= self.unit-type :pulse))
       (graphics.stroke-circle
        p 70 2 (rgba 0 1 1 1)))
@@ -105,7 +113,7 @@
           (match self.unit-type
             :shotgunner (polar-vec2
                          (+ angle (* (- i 2) 0.2))
-                         0.8 (+ (* (math.random) 0.3)))
+                         1.5 (+ (* (math.random) 1)))
             _ (polar-vec2 (+ angle wobble) 1))]
        (tiny.addEntity ecs.world
                        (new-entity Projectile
@@ -153,7 +161,6 @@
         p (vec x y)
         angle (p:angle-to ep)
         iv (polar-vec2 angle (or self.bump-force 64))]
-    (print :bumping self.bump-force)
     (self.box2d.body:applyLinearImpulse iv.x iv.y)))
 
 (λ Unit.bump-update [self dt]
@@ -187,11 +194,11 @@
 
 (λ Enemy.destroy [self]
   (effects.box2d-explode (self:get-body-pos) 10 4 (rgba 1 0 0 1))
-  (when (< (math.random) 0.1)
-    (state.state.director:add-gold 1))
+  ;; (when (< (math.random) 0.1)
+  ;;   (state.state.director:add-gold 1))
   (self.box2d.body:destroy)
-  (when (> (math.random) 0.5)
-    (state.state.director:loot self))
+  ;; (when (> (math.random) 0.5)
+  ;;   (state.state.director:loot self))
   (set state.state.enemy-count
        (- state.state.enemy-count 1)))
 

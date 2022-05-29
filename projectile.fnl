@@ -24,7 +24,7 @@
                                              (math.abs (math.random))
                                              (math.abs (math.random))
                                              1)
-                                :radius 4
+                                :radius 6
                                 :pos self.pos
                                 :body-type :dynamic
                                 :linear-damping 0

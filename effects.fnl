@@ -14,6 +14,21 @@
 (local tiny (require :lib.tiny))
 (local ecs (require :ecs))
 
+(λ screen-text-flash [s pos color ?font]
+  (fire-timeline
+    (local txt {: pos
+                :id (tostring (get-id))
+                :z-index 100
+                :__timers {:spawn {:t 0 :active true}}
+                :draw
+                (λ [self]
+                  (graphics.print-centered s (or ?font assets.f32)
+                                           (+ self.pos (vec 0 (* self.timers.spawn.t -100)))
+                                           (rgba color.r color.g color.b (- 1 self.timers.spawn.t))))})
+    (tiny.addEntity ecs.world txt)
+    (timeline.wait 1)
+    (set txt.dead true)))
+
 (λ text-flash [s pos color ?font]
   (fire-timeline
     (local txt {: pos
@@ -23,7 +38,7 @@
                 :arena-draw
                 (λ [self]
                   (graphics.print-centered s (or ?font assets.f32)
-                                           (+ self.pos (vec 0 (* self.timers.spawn.t -200)))
+                                           (+ self.pos (vec 0 (* self.timers.spawn.t -100)))
                                            (rgba color.r color.g color.b (- 1 self.timers.spawn.t))))})
     (tiny.addEntity ecs.world txt)
     (timeline.wait 1)
@@ -54,4 +69,5 @@
 
 
 {: text-flash
+ : screen-text-flash
  : box2d-explode}

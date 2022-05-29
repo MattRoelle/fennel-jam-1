@@ -172,8 +172,6 @@
 (λ Director.post-solve [self a b col])
 
 (λ Director.init [self]
-  (self:roll-shop)
-  (self:roll-shop)
   (state.state.pworld:setCallbacks
     #(self:begin-contact $...)
     #(self:end-contact $...)
@@ -212,21 +210,15 @@
     (self:roll-shop)))
 
 (λ Director.roll-shop [self]
+  (set state.state.shop-row [])
   (fire-timeline
-    (table.insert state.state.shop-row
-                    {:cost 1 :group [:pulse]
-                     :label "Pulse"})
-    (self:clamp-shop)
-    (timeline.wait 0.3)
-    (table.insert state.state.shop-row
-                    {:cost 1 :group [:shotgunner]
-                     :label "Shotgunner"})
-    (self:clamp-shop)
-    (timeline.wait 0.3)
-    (table.insert state.state.shop-row
-                    {:cost 1 :group [:shooter]
-                     :label "Shooter"})
-    (self:clamp-shop)))
+   (for [i 1 5]
+     (let [u (lume.randomchoice (lume.keys data.unit-types))]
+       (table.insert state.state.shop-row
+                       {:cost 1 :group [u]
+                        :label u}))
+     (self:clamp-shop)
+     (timeline.wait 0.2))))
 
 (λ Director.arena-draw [self]
   (when state.active-shop-btn
@@ -235,15 +227,15 @@
 (λ Director.draw [self]
    (layout #nil {:size stage-size} 
      [[view {:display :absolute}
-       [(imm-stateful button state.state [:debug-spawn-enemy]
-                      {:label :spawn-enemies
+       [(imm-stateful button state.state [:end-turn-btn]
+                      {:label "End Turn"
+                       :disabled (not= :shop state.state.phase)
                        :size (vec 60 60)
-                       :on-click #(self:spawn-enemy-group (vec (love.math.random 10 arena-size.x)
-                                                               (love.math.random 10 arena-size.y))
-                                                          [:brute-1 :basic :basic :basic :basic :basic])
+                       :on-click #(set state.state.phase :combat)
                        :position (vec 10 210)})
         (imm-stateful button state.state [:reroll-shop-btn]
                       {:label :reroll
+                       :disabled (not= :shop state.state.phase)
                        :size (vec 60 60)
                        :on-click #(self:buy-roll-shop)
                        :position (vec 10 290)})
@@ -263,19 +255,10 @@
 
 (λ Director.add-gold [self v]
   (set state.state.money (+ state.state.money v))
-  (fire-timeline
-    (local txt {:pos (vec -50 370)
-                :id (tostring (get-id))
-                :z-index 100
-                :__timers {:spawn {:t 0 :active true}}
-                :arena-draw
-                (λ [self]
-                  (graphics.print-centered "+1" assets.f32
-                                           (+ self.pos (vec 0 (* self.timers.spawn.t -50)))
-                                           (rgba 1 1 0 (- 1 self.timers.spawn.t))))})
-    (tiny.addEntity ecs.world txt)
-    (timeline.wait 1)
-    (set txt.dead true)))
+  (effects.screen-text-flash
+    (.. "+ " v)
+    (vec 32 370)
+    (rgba 1 1 0 1)))
 
 (λ Director.spawn-enemy-group [self pos group]
   (set state.state.enemy-count (+ state.state.enemy-count (length group)))
@@ -334,11 +317,11 @@
 (λ Director.update [self dt]
   (input:update)
   (state.state.pworld:update dt)
-  (when (and state.state.active-shop-btn
-             (input:mouse-released?)
-             (: (aabb (vec 0 0) arena-size) :contains-point?
-                state.state.arena-mpos))
-    (self:spawn-group state.state.active-shop-btn.group))
+  ;; (when (and state.state.active-shop-btn
+  ;;            (input:mouse-released?)
+  ;;            (: (aabb (vec 0 0) arena-size) :contains-point?
+  ;;               state.state.arena-mpos))
+  ;;   (self:spawn-group state.state.active-shop-btn.group))
     
   (let [mpos (- (get-mouse-position) arena-margin
                 (- arena-offset (/ state.state.screen-offset state.state.screen-scale.x)))]
@@ -355,16 +338,23 @@
                       center-stage
                       (rgba 1 1 1 1)
                       assets.f32)
+  (self:add-gold
+   (if (< state.state.display-level 5)
+       10
+       15))
   (timeline.wait 1))
 
 (λ text-flash [s pos color ?font])
 
-(λ Director.main-timeline [self]
-  ;; Game started, wait for first buy
-  (while (not state.state.started)
-    (coroutine.yield))
-  (timeline.wait 1)
+(λ Director.do-shop-phase [self]
+  (set state.state.phase :shop)
+  (self:roll-shop)
+  (while (= :shop state.state.phase)
+    (coroutine.yield)))
 
+(λ Director.end-turn [self])
+
+(λ Director.main-timeline [self]
   ;; Main game loop
   (while (not state.state.game-over?)
     (coroutine.yield)
@@ -374,16 +364,18 @@
         {:type :combat
          : group-options
          : waves}
-        (each [_ wave (ipairs waves)]
-          (for [i 1 wave.groups]
-            (let [grp (lume.randomchoice group-options)]
-              (self:spawn-enemy-group
-               (vec (love.math.random 50 (- arena-size.x 50))
-                    (love.math.random 50 (- arena-size.y 50)))
-               grp)))
-          (while (> state.state.enemy-count 0)
-            (coroutine.yield))
-          (timeline.wait 0.5))
+        (do
+          (self:do-shop-phase)
+          (each [_ wave (ipairs waves)]
+            (for [i 1 wave.groups]
+              (let [grp (lume.randomchoice group-options)]
+                (self:spawn-enemy-group
+                 (vec (love.math.random 50 (- arena-size.x 50))
+                      (love.math.random 50 (- arena-size.y 50)))
+                 grp)))
+            (while (> state.state.enemy-count 0)
+              (coroutine.yield))
+            (timeline.wait 0.5)))
         {:type :upgrade}
         (do
           (self:open-upgrade-screen)

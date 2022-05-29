@@ -56,6 +56,7 @@
   (let [bstate (or ?state {:hover false :scale 0.85})
         (mouse-down? hovering?) (mouse-interaction context)]
     (set bstate.hover hovering?)
+    (when props.disabled (do (lua :return)))
     (when (and props.on-click hovering? mouse-down?)
       (props.on-click))
     (when (not ?state)
