@@ -5,7 +5,7 @@
 (local {: rgba : hexcolor} (require :color))
 (local lume (require :lib.lume))
 (local {: new-entity : get-id} (require :helpers))
-(local {: Box2dCircle} (require :wall))
+(local {: Box2dCircle : Box2dRectangle} (require :wall))
 (local state (require :state))
 (local data (require :data))
 (local timeline (require :timeline))
@@ -35,7 +35,7 @@
           radius (love.math.random 1 4)]
       (local ent
              (new-entity
-              Box2dCircle
+              Box2dRectangle
                {:restitution 1
                 : color
                 :pos p
@@ -44,12 +44,12 @@
                 :mass 0.5
                 :category "10000000"
                 :mask "10000000"
+                :size (vec 4 4)
                 :iv (polar-vec2 (* 2 math.pi (math.random))
-                               (+ 8 (* 4 (math.random))))
-                : radius}))
+                               (+ 8 (* 4 (math.random))))}))
       (tiny.addEntity ecs.world ent)
       (fire-timeline
-       (timeline.wait 0.3)
+       (timeline.tween 0.6 ent.size {:x 0 :y 0} :outQuad)
        (set ent.dead true)))))
 
 

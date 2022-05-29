@@ -66,11 +66,11 @@
     ;(love.graphics.scale bstate.scale bstate.scale)
     (graphics.stroke-rectangle context.position context.size
                                4
-                               (rgba 1 1 1 1))
+                               (rgba 1 1 1 1) 4)
     (graphics.rectangle context.position context.size
                         (if bstate.hover
                             (rgba 0.4 0.4 0.4 1)
-                            (rgba 0 0 0 1)))
+                            (rgba 0 0 0 1)) 4)
     (love.graphics.setColor 1 1 1 1)
     (love.graphics.print (or props.label "na") context.position.x context.position.y)
     (love.graphics.pop)
@@ -103,8 +103,8 @@
                             (+ context.position.y props.padding.y)
                             (- context.size.x (* props.padding.x 2))
                             (- context.size.y (* props.padding.y 2)))
-    (love.graphics.setColor 1 1 1 1)
-    (love.graphics.print (or props.label "na") context.position.x context.position.y)
+    (let [r (get-layout-rect context)]
+      (graphics.print-centered (or props.label "NA") assets.f16 r.center (rgba 1 1 1 1)))
     bstate))
 
 

@@ -16,16 +16,25 @@
                   self.pos.x self.pos.y
                   self.body-type)))
 
-(λ Box2dEntity.draw-world-points [self]
-  (graphics.set-color (or self.color (rgba 1 1 1 1)))
-  (match self.shape-type
-    :circle
-    (let [(x y) (self.body:getPosition)]
-      (love.graphics.circle :fill x y self.radius))
-    _
-    (love.graphics.polygon :fill
-                           (self.body:getWorldPoints
-                            (self.shape:getPoints)))))
+(λ Box2dEntity.draw-world-points [self ?color ?scale]
+  (graphics.set-color (or ?color (rgba 1 1 1 1)))
+  (love.graphics.push)
+  (let [(x y) (self.body:getPosition)]
+    ;;(love.graphics.translate x y)
+    ;; (when ?scale
+    ;;   (love.graphics.scale ?scale.x ?scale.y))
+    (match self.shape-type
+      :circle (love.graphics.circle :fill x y self.radius)
+      _ (love.graphics.polygon :fill (self.body:getWorldPoints (self.shape:getPoints)))))
+  (love.graphics.pop))
+
+(λ Box2dEntity.set-filter-data [self category mask]
+  (set self.category category)
+  (set self.mask mask)
+  (self.fixture:setFilterData
+   (tonumber self.category 2)
+   (tonumber self.mask 2)
+   0))
 
 (λ Box2dEntity.init-properties [self]
   (set self.fixture (love.physics.newFixture self.body self.shape
@@ -33,14 +42,13 @@
   (self.fixture:setUserData self.id)
   (when self.linear-damping
     (self.body:setLinearDamping self.linear-damping))
+  (when self.angular-damping
+    (self.body:setAngularDamping self.angular-damping))
   (when self.restitution
     (self.fixture:setRestitution self.restitution))
   (when self.category
     (assert self.mask "must pass mask")
-    (self.fixture:setFilterData
-     (tonumber self.category 2)
-     (tonumber self.mask 2)
-     0))
+    (self:set-filter-data self.category self.mask))
   (when self.iv
     (self.body:applyLinearImpulse self.iv.x self.iv.y)))
 

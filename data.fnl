@@ -1,22 +1,44 @@
-{:unit-types {:warrior {:hp 20 :bump-damage 10}
+{:unit-types {:warrior {:hp 30 :bump-damage 10 :radius 16 :mass 5 :bump-force 1024 :bump-timer 3} 
               :shooter {:hp 15 :bump-damage 3}
               :shotgunner {:hp 15 :bump-damage 3}
-              :pulse {:hp 15 :bump-damage 3}}
+              :pulse {:hp 15 :bump-damage 3 :linear-damping 0}}
  :enemy-types {:basic {:hp 3 :bump-damage 2}
-               :brute-1 {:hp 30 :bump-damage 5}}
+               :brute-1 {:hp 30 :bump-damage 5}
+               :square-1 {:hp 50 :bump-damage 5}}
  :levels
  [{:type :combat
-   :group-options [[:basic :basic] [:basic :basic :basic]]
-   :waves [{:groups 1}]}
+   :group-options [[:basic :basic :basic :basic] [:basic :basic :basic]]
+   :waves [{:groups 2}]}
   {:type :upgrade}
   {:type :combat
-   :group-options [[:basic :basic :basic :basic] [:brute-1]]
-   :waves [{:groups 1} {:groups 2}]}
+   :group-options [[:basic :basic :basic :basic :basic :basic] [:basic :basic :square-1]]
+   :waves [{:groups 2} {:groups 3}]}
   {:type :upgrade}
   {:type :combat
-   :group-options [[:basic :basic :brute-1] [:brute-1 :brute-1]]
-   :waves [{:groups 2} {:groups 2}]}
+   :group-options [[:basic :basic :square-1 :square-1] [:square-1 :basic :basic :basic :basic :basic :basic :basic]]
+   :waves [{:groups 3} {:groups 4}]}
   {:type :combat
-   :group-options [[:basic :basic :brute-1] [:basic :basic :basic :basic :basic :basic :basic :basic] [:brute-1 :brute-1]]
-   :waves [{:groups 2} {:groups 2} {:groups 2}]}
+   :group-options [[:basic :basic :brute-1 :basic :basic] [:basic :basic :basic :basic :basic :basic :basic :basic] [:brute-1 :brute-1]]
+   :waves [{:groups 4} {:groups 4} {:groups 4}]}
+  {:type :upgrade}
+  {:type :combat
+   :group-options [[:basic :basic :basic :basic :basic :basic :basic :basic
+                    :basic :basic :basic :basic
+                    :square-1 :square-1 :square-1 :square-1 :square-1
+                    :brute-1 :brute-1]]
+   :waves [{:groups 2}]}
+  {:type :upgrade}
+  {:type :combat
+   :group-options [[:basic :basic :basic :basic :basic :basic :basic :basic
+                    :basic :basic :basic :basic
+                    :square-1 :square-1 :square-1 :square-1 :square-1
+                    :brute-1 :brute-1]]
+   :waves [{:groups 2}]}
+  {:type :upgrade}
+  {:type :combat
+   :group-options [[:basic :basic :basic :basic :basic :basic :basic :basic
+                    :basic :basic :basic :basic
+                    :square-1 :square-1 :square-1 :square-1 :square-1
+                    :brute-1 :brute-1]]
+   :waves [{:groups 2}]}
   {:type :upgrade}]}

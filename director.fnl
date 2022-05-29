@@ -123,15 +123,15 @@
          :size (vec stage-size.x 110)}
    (icollect [ix btn (ipairs state.state.shop-row)]
      (when (. state.state.shop-row ix)
-       [view {:color (rgba 0.5 0.3 0.3 1)
-              :padding (vec 10 10)
-              :display :flex
-              :size (vec 100 100)}
+       [view {:display :flex
+              :size (vec 120 80)}
         (when btn 
-          [(imm-stateful shop-button
-                         state.state.shop-row [ix]
-                         {:label btn.label
-                          :index ix})])]))])
+          [[view {:display :flex
+                  :padding (vec 10 0)}
+             [(imm-stateful shop-button
+                            state.state.shop-row [ix]
+                            {:label btn.label
+                             :index ix})]]])]))])
 
 (local Director {})
 (set Director.__index Director)
@@ -202,7 +202,7 @@
 (λ Director.loot [self]
   (let [k (lume.randomchoice (lume.keys data.unit-types))]
     (table.insert state.state.shop-row
-                  {:cost 3 :group [k]
+                  {:cost 1 :group [k]
                    :label k}))
   (self:clamp-shop))
 
@@ -212,16 +212,21 @@
     (self:roll-shop)))
 
 (λ Director.roll-shop [self]
-  (table.insert state.state.shop-row
-                {:cost 3 :group [:pulse]
-                 :label "Pulse"})
-  (table.insert state.state.shop-row
-                {:cost 3 :group [:warrior]
-                 :label "Warrior"})
-  (table.insert state.state.shop-row
-                {:cost 3 :group [:shooter]
-                 :label "Shooter"})
-  (self:clamp-shop))
+  (fire-timeline
+    (table.insert state.state.shop-row
+                    {:cost 1 :group [:pulse]
+                     :label "Pulse"})
+    (self:clamp-shop)
+    (timeline.wait 0.3)
+    (table.insert state.state.shop-row
+                    {:cost 1 :group [:shotgunner]
+                     :label "Shotgunner"})
+    (self:clamp-shop)
+    (timeline.wait 0.3)
+    (table.insert state.state.shop-row
+                    {:cost 1 :group [:shooter]
+                     :label "Shooter"})
+    (self:clamp-shop)))
 
 (λ Director.arena-draw [self]
   (when state.active-shop-btn
@@ -254,6 +259,7 @@
      (love.graphics.print (tostring fps) 4 4)
      (love.graphics.setColor 0 1 0 1)
      (love.graphics.print (tostring state.state.unit-count) 40 4)))
+
 
 (λ Director.add-gold [self v]
   (set state.state.money (+ state.state.money v))
@@ -344,6 +350,15 @@
         {:upgrade :bump-dmg-up}])
   (set state.state.upgrade-screen-open? true))
 
+(λ Director.play-win-level-sequence [self]
+  (effects.text-flash (.. "Level  " state.state.display-level " Complete")
+                      center-stage
+                      (rgba 1 1 1 1)
+                      assets.f32)
+  (timeline.wait 1))
+
+(λ text-flash [s pos color ?font])
+
 (λ Director.main-timeline [self]
   ;; Game started, wait for first buy
   (while (not state.state.started)
@@ -375,7 +390,13 @@
           (while state.state.upgrade-screen-open?
             (coroutine.yield))))
 
+      (when (and (not state.state.game-over?)
+                 (= :combat level-def.type))
+        (self:play-win-level-sequence)
+        (set state.state.display-level (+ state.state.display-level 1)))
       (set state.state.level (+ state.state.level 1)))))
+
+      
 
 (set Director.__defaults
      {:z-index 10000})

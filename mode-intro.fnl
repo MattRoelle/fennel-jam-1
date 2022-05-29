@@ -34,7 +34,8 @@
 (λ timers-system.onAdd [self e]
   (set e.timers
     (collect [k v (pairs e.__timers)]
-      (values k {:t 0 :active v.active}))))
+      (values k {:t (if v.random (* 2 (math.random)) 0)
+                 :active v.active}))))
 
 (λ timers-system.process [self e dt]
   (each [_ v (pairs e.timers)]
@@ -143,7 +144,7 @@ vec4 effect(vec4 color, Image tex, vec2 texture_coords, vec2 screen_coords)
   (love.graphics.setCanvas arena-canvas)
   (love.graphics.push)
   (love.graphics.origin)
-  (love.graphics.setColor 0.2 0.2 0.2 1)
+  (love.graphics.setColor 0.2 0.2 0.2 0.2)
   (love.graphics.rectangle :fill 0 0 arena-size.x arena-size.y)
   (love.graphics.setColor 1 1 1 1)
   (love.graphics.translate state.state.camera-shake.x state.state.camera-shake.y)
