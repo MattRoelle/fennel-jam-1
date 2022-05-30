@@ -145,10 +145,11 @@
                          (+ angle (* (- i 2) 0.2))
                          2 (+ (* (math.random) 1)))
             _ (polar-vec2 (+ angle wobble) 3))]
-       (tiny.addEntity ecs.world
-                       (new-entity Projectile
-                                   {:pos (vec x y)
-                                    :direction iv})))))
+      (state.state.director:muzzle-flash (vec x y))
+      (tiny.addEntity ecs.world
+                      (new-entity Projectile
+                                  {:pos (vec x y)
+                                   :direction iv})))))
 
 (λ Unit.get-enemies-in-range [self r]
   (let [(x y) (self.box2d.body:getPosition)]
