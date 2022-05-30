@@ -53,6 +53,7 @@
         {:radius (or self.def.radius 8)
          :points
          (match self.unit-type
+           :shooter [-10 0 -10 -10 0 -10 10 0 10 10 0 10]
            _ [-10 0 0 -10 10 0 0 10])
          :size (or self.def.size (vec 8 8))
          :pos self.pos
@@ -94,8 +95,8 @@
     (when (or (= self.unit-type :pulse))
       (graphics.stroke-circle
        p 70 2 (rgba 0 1 1 1)))
-    (when self.unit-type
-      (graphics.print-centered self.hp assets.f16 (+ p (vec 0 20)) (rgba 1 1 1 1)))
+  ; (when self.unit-type
+  ;   (graphics.print-centered self.hp assets.f16 (+ p (vec 0 20)) (rgba 1 1 1 1)))
     (when (> self.flash-t 0)
       (self.box2d:draw-world-points
        (rgba 1 1 1 1)
@@ -184,12 +185,14 @@
 
 (λ Unit.update [self dt]
   (when (<= self.hp 0)
-   (set self.dead true))
-  (match self.unit-type
-    :warrior (self:bump-update dt)
-    :shooter (self:shoot-update dt)
-    :shotgunner (self:shoot-update dt)
-    :pulse (self:pulse-update dt)))
+    (set self.dead true))
+  (if (and self.targpos (= :shop state.state.phase))
+    (self.box2d.body:setPosition self.targpos.x self.targpos.y)
+    (match self.unit-type
+      :warrior (self:bump-update dt)
+      :shooter (self:shoot-update dt)
+      :shotgunner (self:shoot-update dt)
+      :pulse (self:pulse-update dt))))
 
 (set Unit.__defaults
      {:z-index 10
@@ -219,6 +222,17 @@
   (match self.enemy-type
     _ (self:bump-update dt)))
 
+(fn get-random-points []
+  (local ret [])
+  (local np 8)
+  (for [i 1 np]
+    (let [t (* 2 math.pi (/ i np))
+          r (love.math.random 6 14)]
+      (table.insert ret (* r (math.cos t)))
+      (table.insert ret (* r (math.sin t)))))
+  ret)
+
+
 (λ Enemy.init [self]
   (assert self.enemy-type :must-pass-enemy-type)
   (set self.def (. data.enemy-types self.enemy-type))
@@ -231,6 +245,7 @@
                                  (math.abs (math.random))
                                  (math.abs (math.random))
                                  1)
+                    :points (get-random-points)
                     :radius
                     (match self.enemy-type
                       :brute-1 40

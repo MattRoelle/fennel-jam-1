@@ -362,9 +362,25 @@
 
 (λ text-flash [s pos color ?font])
 
+(λ Director.line-up-units [self]
+  (var unit-index 1)
+  (each [k grp (pairs state.state.units)]
+    (let [ctx {: unit-index
+                :count 0
+               :pos (vec 32 (+ 16 (* (- unit-index 1) 34)))}]
+      (set unit-index (+ unit-index 1))
+      (each [id e (pairs grp)]
+        (when (= :table (type e))
+          (set e.targpos (e:get-body-pos))
+          (let [c ctx.count]
+            (fire-timeline
+             (timeline.tween 1 e {:targpos (+ ctx.pos (* c (vec 30 0)))} :outQuad)))
+          (set ctx.count (+ ctx.count 1)))))))
+
 (λ Director.do-shop-phase [self]
   (set state.state.phase :shop)
   (self:roll-shop)
+  (self:line-up-units)
   (while (= :shop state.state.phase)
     (coroutine.yield)))
 
