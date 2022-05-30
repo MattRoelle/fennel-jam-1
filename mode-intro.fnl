@@ -167,9 +167,14 @@ vec4 effect(vec4 color, Image tex, vec2 texture_coords, vec2 screen_coords)
   (love.graphics.translate state.state.camera-shake.x state.state.camera-shake.y)
   (love.graphics.setShader arena-shader)
   (love.graphics.draw arena-canvas-entities)
+  (love.graphics.setShader)
+  (each [k v (pairs state.state.muzzle-flashes)]
+    (if (> state.state.time v.t)
+        (tset state.state.muzzle-flashes k nil)
+        (graphics.circle v.pos (* v.scale (love.math.random 14 32))
+                         (rgba 1 1 1 1))))
   (love.graphics.pop)
-  (love.graphics.setCanvas)
-  (love.graphics.setShader))
+  (love.graphics.setCanvas))
 
 (λ arena-draw-system.compare [self e1 e2]
   (> e1.z-index e2.z-index))

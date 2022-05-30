@@ -240,6 +240,13 @@
   (when state.active-shop-btn
     (graphics.circle state.state.arena-mpos 10 (rgba 1 1 1 1))))
 
+(λ Director.muzzle-flash [self pos ?scale]
+  (tset state.state.muzzle-flashes
+        (get-id)
+        {:t (+ state.state.time 0.04)
+         :scale (or ?scale 1)
+         : pos}))
+
 (λ Director.setup-arena-entities [self]
   ;; Add walls
   (set self.bottom-wall
@@ -351,24 +358,24 @@
   (let [p (+ pos (vec (love.math.random -50 50)
                       (love.math.random -50 50)))]
     (fire-timeline
-      (local img {:pos p
+      ;(local img {:pos p
                   :id (tostring (get-id))
                   :z-index 100
                   :__timers {:spawn {:t 0 :active true}}
                   :arena-draw
                   (λ [self]
                     (when (= 0 (% (math.floor (* self.timers.spawn.t 10)) 2))
-                      (graphics.image aseprite.spawn self.pos)))})
-      (tiny.addEntity ecs.world img)
-      (timeline.wait 1)
+                      (graphics.image aseprite.spawn self.pos)))
+      ;(tiny.addEntity ecs.world img)
+      ;(timeline.wait 1)
       (each [_ unit-type (ipairs group)]
         (let [def (. data.unit-types unit-type)
               unit {:type unit-type
                     :level 1
                     :hp def.hp}]
           (tiny.addEntity ecs.world
-                          (new-entity Unit {:pos p : unit}))))
-      (set img.dead true))))
+                          (new-entity Unit {:pos p : unit})))))))
+      ;(set img.dead true))))
 
 (λ Director.choose-upgrade [self upgrade]
   (set state.state.upgrade-screen-open? false)
@@ -388,6 +395,8 @@
              (when (not= index ix) si))))))
 
 (λ Director.update [self dt]
+  (set state.state.time
+       (+ state.state.time dt))
   (input:update)
   (state.state.pworld:update dt)
   ;; (when (and state.state.active-shop-btn
@@ -406,7 +415,43 @@
         {:upgrade :bump-dmg-up}])
   (set state.state.upgrade-screen-open? true))
 
+(λ Director.save-unit-state [self]
+  (set state.state.team-state [])
+  (each [_ unit (pairs state.state.teams.player)]
+    (table.insert state.state.team-state
+                  (lume.merge unit.unit {:hp (. data.unit-types unit.unit.type :hp)}))))
+
+(λ Director.restore-unit-state [self]
+  (when state.state.team-state
+    (each [_ unit (pairs state.state.team-state)]
+      (tiny.addEntity ecs.world
+                      (new-entity Unit
+                                  {:pos (/ arena-size 2)
+                                   : unit})))))
+
 (λ Director.play-win-level-sequence [self]
+  (local spin-in
+         {:z-index 20000
+          :t 0
+          :id (get-id)
+          :arena-draw
+          (fn [self]
+            (love.graphics.push)
+            (love.graphics.translate (/ arena-size.x 2)
+                                     (/ arena-size.y 2))
+            (love.graphics.rotate (* self.t 2 math.pi))
+            (love.graphics.scale (* 3 self.t) (* 3 self.t))
+            (graphics.print-centered "VICTORY" assets.f32
+                                     (vec 0 0) (rgba 1 1 1 1))
+            (love.graphics.pop))})
+  (tiny.addEntity ecs.world spin-in)
+  (timeline.tween 1.5 spin-in {:t 1} :outQuad)
+  (each [team teamlist (pairs state.state.teams)]
+    (each [_ unit (pairs teamlist)]
+      (unit:pop)
+      (timeline.wait 0.2)))
+  (timeline.wait 1)
+  (set spin-in.dead true)
   (effects.text-flash (.. "Level  " state.state.display-level " Complete")
                       center-stage
                       (rgba 1 1 1 1)
@@ -445,12 +490,12 @@
   (set state.state.shop-row [])
   (set state.state.phase :combat))
 
-(λ Director.pre-combat-animation [self]
-  (set self.divider.targpos (self.divider.pos:clone))
-  (timeline.tween 1 self.divider
-                  {:targpos self.divider.center-pos}
-                  :outQuad)
-  (timeline.wait 0.5))
+(λ Director.pre-combat-animation [self])
+  ;(set self.divider.targpos (self.divider.pos:clone))
+ ;(timeline.tween 1 self.divider
+ ;                {:targpos self.divider.center-pos}
+ ;                :outQuad
+ ;(timeline.wait 0.5))
 
 (λ Director.spawn-enemies [self group-options waves]
   (each [_ wave (ipairs waves)]
@@ -462,17 +507,17 @@
          grp)))))
 
 (λ Director.start-combat [self]
-  (timeline.wait 2)
-  (set self.divider.targpos self.divider.pos)
+  (timeline.wait 1.5)
+ ;(set self.divider.targpos self.divider.pos)
+ ;(timeline.wait 0.1)
+ ;(set self.divider.targpos nil)
   (each [team teamlist (pairs state.state.teams)]
     (print :team team)
     (each [_ unit (ipairs teamlist)]
       (print :unit unit)
       (unit.box2d.body:applyLinearImpulse
        (if (= team :player) 100 -100)
-       (love.math.random -10 10))))
-  (timeline.wait 0.5)
-  (set self.divider.targpos nil))
+       (love.math.random -10 10)))))
 
 (λ Director.main-timeline [self]
   (self:setup-arena-entities)
@@ -487,7 +532,10 @@
          : group-options
          : waves}
         (do
+          (timeline.wait 0.5)
+          (self:restore-unit-state)
           (self:do-shop-phase)
+          (self:save-unit-state)
           (self:pre-combat-animation)
           (self:spawn-enemies group-options waves)
           (self:start-combat)

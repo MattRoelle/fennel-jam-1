@@ -12,6 +12,8 @@
   (local initial-state
          {:screen-scale (vec 1 1)
           :screen-offset (vec 0 0)
+          :muzzle-flashes {}
+          :time 0
           :unit-count 0
           :phase :shop
           :display-level 1

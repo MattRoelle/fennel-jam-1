@@ -35,8 +35,11 @@
     (self.flash-timeline:cancel))
   (set self.flash-timeline
        (fire-timeline
-         (set self.flash-t 1)
-         (timeline.tween 0.25 self {:flash-t 0} :outQuad))))
+        (set self.scale (vec 1.3 1.3))
+        (set self.flashing true)
+        (timeline.tween 0.3 self {:scale (vec 1 1)} :outQuad)
+        (set self.flashing false)
+        (set self.scale (vec 1 1)))))
 
 (λ Unit.gen-eyes [self]
   (set self.eye-gap (+ 0.3 (* 0.3 (math.random))))
@@ -44,7 +47,7 @@
   (set self.eye-size (if (> (math.random) 0.5) 3 4)))
 
 (λ Unit.init [self]
-  (print :unit-init)
+  (set self.scale (vec 1 1))
   (assert self.unit :must-pass-unit)
   (set self.def (. data.unit-types self.unit.type))
   (set state.state.unit-count (+ state.state.unit-count 1))
@@ -53,12 +56,12 @@
 
   (set self.box2d
        (new-entity
-        (match self.unit-type
+        (match self.unit.type
           :warrior Box2dCircle
           _ Box2dPolygon)
         {:radius (or self.def.radius 8)
          :points
-         (match self.unit-type
+         (match self.unit.type
            :shooter [-10 0 -10 -10 0 -10 10 0 10 10 0 10]
            _ [-10 0 0 -10 10 0 0 10])
          :size (or self.def.size (vec 8 8))
@@ -72,7 +75,9 @@
          :mask "10001011"}))
   (self.box2d:init self.id)
   (let [iv (polar-vec2 (* (math.random) 2 math.pi) 20)]
-    (self.box2d.body:applyLinearImpulse iv.x iv.y)))
+    (self.box2d.body:applyLinearImpulse iv.x iv.y))
+  (let [(x y) (self.box2d.body:getPosition)]
+    (state.state.director:muzzle-flash (vec x y))))
 
 
 (λ Unit.get-unit-color [self]
@@ -86,30 +91,37 @@
     :square-1 (hexcolor :b13e53ff)
     _ palette.index.ix10))
 
+(λ Unit.pop [self]
+  (fire-timeline
+   (timeline.tween 0.4 self {:scale (vec 1.8 1.8)} :outQuad)
+   (let [(x y) (self.box2d.body:getPosition)]
+     (state.state.director:muzzle-flash (vec x y) 2.5))
+   (set self.dead true)))
+
 (λ Unit.arena-draw [self]
   (let [(x y) (self.box2d.body:getPosition)
+        a (self.box2d.body:getAngle)
         p (vec x y)
-        c (self:get-unit-color)] 
-    (self.box2d:draw-world-points c)
-    (let [a1 (- (self.box2d.body:getAngle) self.eye-gap)
-          a2 (+ (self.box2d.body:getAngle) self.eye-gap)
-          e1 (+ p (polar-vec2 a1 self.eye-dist))
-          e2 (+ p (polar-vec2 a2 self.eye-dist))]
+        c
+        (if self.flashing
+            (rgba 1 1 1 1)
+            (self:get-unit-color))]
+    (love.graphics.push)
+    (love.graphics.translate x y)
+    (love.graphics.rotate a)
+    (love.graphics.scale self.scale.x self.scale.y)
+    (graphics.circle (vec 0 0) 3 (hexcolor :f10000ff))
+    (self.box2d:draw-local-points c)
+    (let [a1 (- self.eye-gap)
+          a2 (+ self.eye-gap)
+          e1 (+ (polar-vec2 a1 self.eye-dist))
+          e2 (+ (polar-vec2 a2 self.eye-dist))]
       (graphics.circle e1 self.eye-size (hexcolor :f1f1f1ff))
       (graphics.circle e2 self.eye-size (hexcolor :f1f1f1ff))
-      (graphics.circle e1 2 (hexcolor :000000ff))
-      (graphics.circle e2 2 (hexcolor :000000ff)))
-    ;; (when (or (= self.unit-type :pulse))
-    ;;   (graphics.stroke-circle
-    ;;    p 70 2 (rgba 0 1 1 1)))
-  ; (when self.unit-type
-  ;   (graphics.print-centered self.hp assets.f16 (+ p (vec 0 20)) (rgba 1 1 1 1)))
-    (when (> self.flash-t 0)
-      (self.box2d:draw-world-points
-       (rgba 1 1 1 1)
-       (* (vec 0.4 0.4)
-          (vec self.flash-t self.flash-t))))))
-    ;(graphics.rectangle (- p (vec 8 14)) (vec 16 4) (rgba 1 1 1 1))))
+      (when (not self.flashing)
+        (graphics.circle e1 2 (hexcolor :000000ff))
+        (graphics.circle e2 2 (hexcolor :000000ff))))
+    (love.graphics.pop)))
 
 (λ Unit.random-update [self dt]
   (when (> 0.02 (math.random))
@@ -120,7 +132,7 @@
   (- 0.3 (* 0.6 (math.random))))
 
 (λ Unit.shoot-enemy [self e]
-  (for [i 1 (match self.unit-type :shotgunner 5 _ 1)]
+  (for [i 1 (match self.unit.type :shotgunner 5 _ 1)]
     (let [(ex ey) (e.box2d.body:getPosition)
           ep (vec ex ey)
           (x y) (self.box2d.body:getPosition)
@@ -128,7 +140,7 @@
           angle (p:angle-to ep)
           wobble (self:get-wobble)
           iv
-          (match self.unit-type
+          (match self.unit.type
             :shotgunner (polar-vec2
                          (+ angle (* (- i 2) 0.2))
                          2 (+ (* (math.random) 1)))
@@ -214,10 +226,10 @@
 
 (set Unit.__defaults
      {:z-index 10
-      :flash-t 0
-      :__timers {:spawn {:t 0 :active true}
-                 :move-tick {:t 0 :active true :random true}
-                 :shoot-tick {:t 0 :active true :random true}}
+      :__timers
+      {:spawn {:t 0 :active true}
+       :move-tick {:t 0 :active true :random true}
+       :shoot-tick {:t 0 :active true :random true}}
       :pos (vec 32 32)
       :team :player})
 
@@ -253,7 +265,7 @@
   ret)
 
 (λ Enemy.init [self]
-  (print :enemy-init)
+  (set self.scale (vec 1 1))
   (assert self.unit :must-pass-unit)
   (set self.def (. data.enemy-types self.unit.type))
   (set state.state.enemy-count (+ state.state.enemy-count 1))

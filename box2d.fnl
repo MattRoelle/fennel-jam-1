@@ -20,17 +20,18 @@
   (when self.targpos
     (self.body:setPosition self.targpos.x self.targpos.y)))
 
+(λ Box2dEntity.draw-local-points [self ?color ?scale]
+  (graphics.set-color (or ?color (rgba 1 1 1 1)))
+  (match self.shape-type
+    :circle (love.graphics.circle :fill 0 0 self.radius)
+    _ (love.graphics.polygon :fill (self.shape:getPoints))))
+
 (λ Box2dEntity.draw-world-points [self ?color ?scale]
   (graphics.set-color (or ?color (rgba 1 1 1 1)))
-  (love.graphics.push)
   (let [(x y) (self.body:getPosition)]
-    ;;(love.graphics.translate x y)
-    ;; (when ?scale
-    ;;   (love.graphics.scale ?scale.x ?scale.y))
     (match self.shape-type
       :circle (love.graphics.circle :fill x y self.radius)
-      _ (love.graphics.polygon :fill (self.body:getWorldPoints (self.shape:getPoints)))))
-  (love.graphics.pop))
+      _ (love.graphics.polygon :fill (self.body:getWorldPoints (self.shape:getPoints))))))
 
 (λ Box2dEntity.set-filter-data [self category mask]
   (set self.category category)
@@ -54,7 +55,9 @@
     (assert self.mask "must pass mask")
     (self:set-filter-data self.category self.mask))
   (when self.iv
-    (self.body:applyLinearImpulse self.iv.x self.iv.y)))
+    (self.body:applyLinearImpulse self.iv.x self.iv.y))
+  (let [(l t r b) (self.shape:computeAABB 0 0 0 1)]
+    (set self.size (vec (- r l) (- b t)))))
 
 (set Box2dEntity.__defaults
      {:linear-damping 0.9
