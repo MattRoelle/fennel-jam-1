@@ -38,12 +38,18 @@
          (set self.flash-t 1)
          (timeline.tween 0.25 self {:flash-t 0} :outQuad))))
 
+(λ Unit.gen-eyes [self]
+  (set self.eye-gap (+ 0.3 (* 0.3 (math.random))))
+  (set self.eye-dist (+ 7 (* 3 (math.random))))
+  (set self.eye-size (if (> (math.random) 0.5) 3 4)))
+
 (λ Unit.init [self]
   (assert self.unit-type :must-pass-unit-type)
   (set self.def (. data.unit-types self.unit-type))
   (set state.state.unit-count (+ state.state.unit-count 1))
   (set self.hp self.def.hp)
   (set self.bump-force (or self.def.bump-force 64))
+  (self:gen-eyes)
 
   (set self.box2d
        (new-entity
@@ -58,7 +64,7 @@
          :size (or self.def.size (vec 8 8))
          :pos self.pos
          :body-type :dynamic
-         :angular-damping (or self.def.angular-damping 1)
+         :angular-damping (or self.def.angular-damping 3)
          :linear-damping (or self.def.linear-damping 1.5)
          :mass (or self.def.mass 1)
          :restitution (or self.def.restitution 0.99)
@@ -78,13 +84,13 @@
     ;; (_ :basic) palette.index.ix8
     ;; (_ :brute-1) palette.index.ix9
     ;; (_ _) palette.index.ix10
-    (:warrior _) (rgba 0 0 1 1)
-    (:shotgunner _) (rgba 0 1 0 1)
-    (:shooter _) (rgba 0 1 0 1)
-    (:pulse _) (rgba 1 1 0 1)
-    (_ :basic) (rgba 1 0 0 1)
-    (_ :brute-1) (rgba 1 0.25 0 1)
-    (_ :square-1) (rgba 1 0 0 1)
+    (:warrior _) (hexcolor :ef7d57ff)
+    (:shotgunner _) (hexcolor :38b764ff)
+    (:shooter _) (hexcolor :38b764ff)
+    (:pulse _) (hexcolor :41a6f6ff)
+    (_ :basic) (hexcolor :b13e53ff)
+    (_ :brute-1) (hexcolor :b13e53ff)
+    (_ :square-1) (hexcolor :b13e53ff)
     (_ _) palette.index.ix10))
 
 (λ Unit.arena-draw [self]
@@ -92,9 +98,17 @@
         p (vec x y)
         c (self:get-unit-color)] 
     (self.box2d:draw-world-points c)
-    (when (or (= self.unit-type :pulse))
-      (graphics.stroke-circle
-       p 70 2 (rgba 0 1 1 1)))
+    (let [a1 (- (self.box2d.body:getAngle) self.eye-gap)
+          a2 (+ (self.box2d.body:getAngle) self.eye-gap)
+          e1 (+ p (polar-vec2 a1 self.eye-dist))
+          e2 (+ p (polar-vec2 a2 self.eye-dist))]
+      (graphics.circle e1 self.eye-size (hexcolor :f1f1f1ff))
+      (graphics.circle e2 self.eye-size (hexcolor :f1f1f1ff))
+      (graphics.circle e1 2 (hexcolor :000000ff))
+      (graphics.circle e2 2 (hexcolor :000000ff)))
+    ;; (when (or (= self.unit-type :pulse))
+    ;;   (graphics.stroke-circle
+    ;;    p 70 2 (rgba 0 1 1 1)))
   ; (when self.unit-type
   ;   (graphics.print-centered self.hp assets.f16 (+ p (vec 0 20)) (rgba 1 1 1 1)))
     (when (> self.flash-t 0)
@@ -183,9 +197,16 @@
       (when e
         (self:bump-enemy e)))))
 
+(λ Unit.look-velocity-dir [self]
+  (let [(vx vy) (self.box2d.body:getLinearVelocity)
+        a (math.atan2 vy vx)]
+    (when (> (+ (* vx vx) (* vy vy)) 5)
+      (self.box2d.body:setAngle a))))
+
 (λ Unit.update [self dt]
   (when (<= self.hp 0)
     (set self.dead true))
+  (self:look-velocity-dir)
   (if (and self.targpos (= :shop state.state.phase))
     (self.box2d.body:setPosition self.targpos.x self.targpos.y)
     (match self.unit-type
@@ -237,6 +258,7 @@
   (assert self.enemy-type :must-pass-enemy-type)
   (set self.def (. data.enemy-types self.enemy-type))
   (set self.hp self.def.hp)
+  (self:gen-eyes)
   (set self.box2d
        (new-entity (match self.enemy-type
                      :boss-1 Box2dRectangle
@@ -259,6 +281,7 @@
                     :body-type :dynamic
                     :linear-damping 1
                     :mass 3
+                    :angle 0
                     :restitution 0.99
                     :category "00000010"
                     :mask "10000111"}))

@@ -132,12 +132,13 @@ vec4 effect(vec4 color, Image tex, vec2 texture_coords, vec2 screen_coords)
     vec4 down = Texel(tex, texture_coords+vec2(0,res));
     vec4 left = Texel(tex, texture_coords+vec2(-res,0));
     vec4 downleft = Texel(tex, texture_coords+vec2(-res,res));
-    if (texturecolor.a > threshold && (down.a < threshold || left.a < threshold || downleft.a < threshold)) {
-      return texturecolor * 0.5;
+
+    if (texturecolor.a > threshold && (up.a < threshold || right.a < threshold || upright.a < threshold)) {
+      return texturecolor * 2;
     }
 
     if (texturecolor.a < threshold && (up.a > threshold || right.a > threshold || upright.a > threshold)) {
-      return vec4(0,0,0,1);
+      return vec4(0.0f/255.0f,0.0/255.0f,0.0/255.0f,1);
     }
 
       return texturecolor * color;
@@ -161,7 +162,7 @@ vec4 effect(vec4 color, Image tex, vec2 texture_coords, vec2 screen_coords)
   (love.graphics.setColor 1 1 1 1)
   (love.graphics.push)
   (love.graphics.origin)
-  (love.graphics.setColor 0.1 0.1 0.1 0.95)
+  (graphics.set-color (hexcolor :343434f1))
   (love.graphics.rectangle :fill 0 0 arena-size.x arena-size.y)
   (love.graphics.setColor 1 1 1 1)
   (love.graphics.translate state.state.camera-shake.x state.state.camera-shake.y)

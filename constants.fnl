@@ -7,6 +7,8 @@
 (local arena-offset (vec 0 -50))
 (local arena-size (- stage-size (* arena-margin 2)))
 
+(print :as arena-size)
+
 {: stage-size
  : center-stage
  : arena-margin
