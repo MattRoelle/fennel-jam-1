@@ -5,7 +5,7 @@
 (local {: rgba : hexcolor} (require :color))
 (local lume (require :lib.lume))
 (local {: new-entity} (require :helpers))
-(local {: Box2dCircle : Box2dRectangle : Box2dPolygon} (require :wall))
+(local {: Box2dCircle : Box2dRectangle : Box2dPolygon} (require :box2d))
 (local state (require :state))
 (local data (require :data))
 (local timeline (require :timeline))
@@ -25,7 +25,7 @@
     (vec x y)))
 
 (λ Unit.take-dmg [self v]
-  (set self.hp (- self.hp v))
+  (set self.unit.hp (- self.unit.hp v))
   ;; (effects.text-flash (.. "-" v) (- (self:get-body-pos) (vec 4 0))
   ;;                     (rgba 1 1 1 1) assets.f32)
   (self:flash))
@@ -44,10 +44,10 @@
   (set self.eye-size (if (> (math.random) 0.5) 3 4)))
 
 (λ Unit.init [self]
-  (assert self.unit-type :must-pass-unit-type)
-  (set self.def (. data.unit-types self.unit-type))
+  (print :unit-init)
+  (assert self.unit :must-pass-unit)
+  (set self.def (. data.unit-types self.unit.type))
   (set state.state.unit-count (+ state.state.unit-count 1))
-  (set self.hp self.def.hp)
   (set self.bump-force (or self.def.bump-force 64))
   (self:gen-eyes)
 
@@ -64,7 +64,7 @@
          :size (or self.def.size (vec 8 8))
          :pos self.pos
          :body-type :dynamic
-         :angular-damping (or self.def.angular-damping 3)
+         :angular-damping (or self.def.angular-damping 2)
          :linear-damping (or self.def.linear-damping 1.5)
          :mass (or self.def.mass 1)
          :restitution (or self.def.restitution 0.99)
@@ -76,22 +76,15 @@
 
 
 (λ Unit.get-unit-color [self]
-  (match (values self.unit-type self.enemy-type)
-    ;; (:warrior _) palette.index.ix2
-    ;; (:shotgunner _) palette.index.ix3
-    ;; (:shooter _) palette.index.ix3
-    ;; (:pulse _) palette.index.ix5
-    ;; (_ :basic) palette.index.ix8
-    ;; (_ :brute-1) palette.index.ix9
-    ;; (_ _) palette.index.ix10
-    (:warrior _) (hexcolor :ef7d57ff)
-    (:shotgunner _) (hexcolor :38b764ff)
-    (:shooter _) (hexcolor :38b764ff)
-    (:pulse _) (hexcolor :41a6f6ff)
-    (_ :basic) (hexcolor :b13e53ff)
-    (_ :brute-1) (hexcolor :b13e53ff)
-    (_ :square-1) (hexcolor :b13e53ff)
-    (_ _) palette.index.ix10))
+  (match self.unit.type
+    :warrior  (hexcolor :ef7d57ff)
+    :shotgunner (hexcolor :38b764ff)
+    :shooter (hexcolor :38b764ff)
+    :pulse  (hexcolor :41a6f6ff)
+    :basic (hexcolor :b13e53ff)
+    :brute-1 (hexcolor :b13e53ff)
+    :square-1 (hexcolor :b13e53ff)
+    _ palette.index.ix10))
 
 (λ Unit.arena-draw [self]
   (let [(x y) (self.box2d.body:getPosition)
@@ -149,7 +142,8 @@
   (let [(x y) (self.box2d.body:getPosition)]
     (icollect [k v (pairs state.state.teams.enemy)]
       (let [(x2 y2) (v.box2d.body:getPosition)]
-        (when (< (: (vec x y) :distance-to (vec x2 y2)) (or self.pulse-radius 70))
+        (when (< (: (vec x y) :distance-to (vec x2 y2))
+                 (or self.pulse-radius 70))
           v)))))
           
 (λ Unit.pulse-update [self dt]
@@ -171,6 +165,7 @@
     (when (> state.state.enemy-count 0)
       (let [e-id (lume.randomchoice (lume.keys state.state.teams.enemy))
             e (. state.state.teams.enemy e-id)]
+        (print :shooting e-id e)
         (when e
           (self:shoot-enemy e))))))
 
@@ -197,19 +192,21 @@
       (when e
         (self:bump-enemy e)))))
 
-(λ Unit.look-velocity-dir [self]
+(λ Unit.look-velocity-dir [self dt]
   (let [(vx vy) (self.box2d.body:getLinearVelocity)
-        a (math.atan2 vy vx)]
-    (when (> (+ (* vx vx) (* vy vy)) 5)
-      (self.box2d.body:setAngle a))))
+        a (math.atan2 vy vx)
+        theta (self.box2d.body:getAngle)
+        da (- theta a)]
+    (when (> (+ (* vx vx) (* vy vy)) 0.1)
+      (self.box2d.body:applyAngularImpulse (* -64 dt da)))))
 
 (λ Unit.update [self dt]
-  (when (<= self.hp 0)
+  (when (<= self.unit.hp 0)
     (set self.dead true))
-  (self:look-velocity-dir)
+  (self:look-velocity-dir dt)
   (if (and self.targpos (= :shop state.state.phase))
     (self.box2d.body:setPosition self.targpos.x self.targpos.y)
-    (match self.unit-type
+    (match self.unit.type
       :warrior (self:bump-update dt)
       :shooter (self:shoot-update dt)
       :shotgunner (self:shoot-update dt)
@@ -234,13 +231,15 @@
   (self.box2d.body:destroy)
   ;; (when (> (math.random) 0.5)
   ;;   (state.state.director:loot self))
+  (print :destroying-enemy)
   (set state.state.enemy-count
        (- state.state.enemy-count 1)))
 
 (λ Enemy.update [self dt]
-  (when (<= self.hp 0)
+  (self:look-velocity-dir dt)
+  (when (<= self.unit.hp 0)
     (set self.dead true))
-  (match self.enemy-type
+  (match self.unit.type
     _ (self:bump-update dt)))
 
 (fn get-random-points []
@@ -253,14 +252,14 @@
       (table.insert ret (* r (math.sin t)))))
   ret)
 
-
 (λ Enemy.init [self]
-  (assert self.enemy-type :must-pass-enemy-type)
-  (set self.def (. data.enemy-types self.enemy-type))
-  (set self.hp self.def.hp)
+  (print :enemy-init)
+  (assert self.unit :must-pass-unit)
+  (set self.def (. data.enemy-types self.unit.type))
+  (set state.state.enemy-count (+ state.state.enemy-count 1))
   (self:gen-eyes)
   (set self.box2d
-       (new-entity (match self.enemy-type
+       (new-entity (match self.unit.type
                      :boss-1 Box2dRectangle
                      _ Box2dCircle)
                    {:color (rgba (math.abs (math.random))
@@ -269,17 +268,18 @@
                                  1)
                     :points (get-random-points)
                     :radius
-                    (match self.enemy-type
+                    (match self.unit.type
                       :brute-1 40
                       :boss-1 30
                       _ (love.math.random 8 14))
                     :size
-                    (match self.enemy-type
+                    (match self.unit.type
                       :boss-1 (vec 32 32)
                       _ (vec 8 8))
                     :pos self.pos
                     :body-type :dynamic
                     :linear-damping 1
+                    :angular-damping (or self.def.angular-damping 2)
                     :mass 3
                     :angle 0
                     :restitution 0.99

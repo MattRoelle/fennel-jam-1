@@ -8,7 +8,7 @@
 (local lume (require :lib.lume))
 (local input (require :input))
 (local {: new-entity : get-id} (require :helpers))
-(local {: Box2dCircle} (require :wall))
+(local {: Box2dCircle : Box2dRectangle} (require :box2d))
 (local ecs (require :ecs))
 (local state (require :state))
 (local {: layout : get-layout-rect} (require :imgui))
@@ -240,6 +240,56 @@
   (when state.active-shop-btn
     (graphics.circle state.state.arena-mpos 10 (rgba 1 1 1 1))))
 
+(λ Director.setup-arena-entities [self]
+  ;; Add walls
+  (set self.bottom-wall
+    (new-entity Box2dRectangle
+                {:pos (vec (/ arena-size.x 2) arena-size.y)
+                 :size (vec arena-size.x 10)
+                 :wall true
+                 :category "10000000"
+                 :mask "11111111"}))
+
+  (set self.top-wall
+    (new-entity Box2dRectangle
+                {:pos (vec (/ arena-size.x 2) 0)
+                 :size (vec arena-size.x 10)
+                 :wall true
+                 :category "10000000"
+                 :mask "11111111"}))
+
+  (set self.left-wall
+    (new-entity Box2dRectangle
+                {:pos (vec 0 (/ arena-size.y 2))
+                 :size (vec 10 arena-size.y)
+                 :wall true
+                 :category "10000000"
+                 :mask "11111111"}))
+
+  (set self.right-wall
+    (new-entity Box2dRectangle
+                {:pos (vec arena-size.x (/ arena-size.y 2))
+                 :size (vec 10 arena-size.y)
+                 :wall true
+                 :category "10000000"
+                 :mask "11111111"}))
+
+  (set self.divider
+    (new-entity Box2dRectangle
+                {:center-pos (vec (/ arena-size.x 4) (/ arena-size.y 2))
+                 :pos (self.right-wall.pos:clone)
+                 :size (vec 10 arena-size.y)
+                 :wall true
+                 :category "10000000"
+                 :mask "11111111"}))
+
+  (tiny.add ecs.world 
+            self.bottom-wall
+            self.top-wall
+            self.left-wall
+            self.right-wall
+            self.divider))
+
 (λ Director.draw [self]
    (layout #nil {:size stage-size} 
      [[view {:display :absolute}
@@ -277,7 +327,6 @@
     (rgba 1 1 0 1)))
 
 (λ Director.spawn-enemy-group [self pos group]
-  (set state.state.enemy-count (+ state.state.enemy-count (length group)))
   (fire-timeline
     (local img {: pos
                 :id (tostring (get-id))
@@ -290,13 +339,15 @@
     (tiny.addEntity ecs.world img)
     (timeline.wait 1)
     (each [_ enemy-type (ipairs group)]
-      (tiny.addEntity ecs.world
-                      (new-entity Enemy {: pos : enemy-type})))
+      (let [def (. data.enemy-types enemy-type)
+            unit {:hp def.hp
+                  :type enemy-type}]
+        (tiny.addEntity ecs.world
+                        (new-entity Enemy {: pos : unit}))))
     (set img.dead true)))
 
 (λ Director.spawn-group [self pos group]
   (set state.state.started true)
-  (set state.state.unit-count (+ state.state.unit-count (length group)))
   (let [p (+ pos (vec (love.math.random -50 50)
                       (love.math.random -50 50)))]
     (fire-timeline
@@ -311,8 +362,12 @@
       (tiny.addEntity ecs.world img)
       (timeline.wait 1)
       (each [_ unit-type (ipairs group)]
-        (tiny.addEntity ecs.world
-                        (new-entity Unit {:pos p : unit-type})))
+        (let [def (. data.unit-types unit-type)
+              unit {:type unit-type
+                    :level 1
+                    :hp def.hp}]
+          (tiny.addEntity ecs.world
+                          (new-entity Unit {:pos p : unit}))))
       (set img.dead true))))
 
 (λ Director.choose-upgrade [self upgrade]
@@ -325,7 +380,9 @@
     (when (>= state.state.money shop-item.cost)
       (set state.state.money (- state.state.money shop-item.cost))
       (self:screen-shake)
-      (self:spawn-group (/ arena-size 2) shop-item.group)
+      (self:spawn-group (vec (* 0.5 arena-size.x)
+                             (/ arena-size.y 2))
+                        shop-item.group)
       (set state.state.shop-row
            (icollect [ix si (ipairs state.state.shop-row)]
              (when (not= index ix) si))))))
@@ -366,7 +423,7 @@
   (var unit-index 1)
   (each [k grp (pairs state.state.units)]
     (let [ctx {: unit-index
-                :count 0
+               :count 0
                :pos (vec 32 (+ 16 (* (- unit-index 1) 34)))}]
       (set unit-index (+ unit-index 1))
       (each [id e (pairs grp)]
@@ -388,7 +445,38 @@
   (set state.state.shop-row [])
   (set state.state.phase :combat))
 
+(λ Director.pre-combat-animation [self]
+  (set self.divider.targpos (self.divider.pos:clone))
+  (timeline.tween 1 self.divider
+                  {:targpos self.divider.center-pos}
+                  :outQuad)
+  (timeline.wait 0.5))
+
+(λ Director.spawn-enemies [self group-options waves]
+  (each [_ wave (ipairs waves)]
+    (for [i 1 wave.groups]
+      (let [grp (lume.randomchoice group-options)]
+        (self:spawn-enemy-group
+         (vec (* (/ 3 4) arena-size.x)
+              (/ arena-size.y 2))
+         grp)))))
+
+(λ Director.start-combat [self]
+  (timeline.wait 2)
+  (set self.divider.targpos self.divider.pos)
+  (each [team teamlist (pairs state.state.teams)]
+    (print :team team)
+    (each [_ unit (ipairs teamlist)]
+      (print :unit unit)
+      (unit.box2d.body:applyLinearImpulse
+       (if (= team :player) 100 -100)
+       (love.math.random -10 10))))
+  (timeline.wait 0.5)
+  (set self.divider.targpos nil))
+
 (λ Director.main-timeline [self]
+  (self:setup-arena-entities)
+
   ;; Main game loop
   (while (not state.state.game-over?)
     (coroutine.yield)
@@ -400,16 +488,12 @@
          : waves}
         (do
           (self:do-shop-phase)
-          (each [_ wave (ipairs waves)]
-            (for [i 1 wave.groups]
-              (let [grp (lume.randomchoice group-options)]
-                (self:spawn-enemy-group
-                 (vec (love.math.random 50 (- arena-size.x 50))
-                      (love.math.random 50 (- arena-size.y 50)))
-                 grp)))
-            (while (> state.state.enemy-count 0)
-              (coroutine.yield))
-            (timeline.wait 0.5)))
+          (self:pre-combat-animation)
+          (self:spawn-enemies group-options waves)
+          (self:start-combat)
+          (while (> state.state.enemy-count 0)
+            (coroutine.yield))
+          (timeline.wait 0.5))
         {:type :upgrade}
         (do
           (self:open-upgrade-screen)

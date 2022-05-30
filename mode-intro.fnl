@@ -10,7 +10,6 @@
 (local {: new-entity : get-mouse-position} (require :helpers))
 (local aabb (require :aabb))
 (local Director (require :director))
-(local {: Box2dRectangle} (require :wall))
 
 (local {: stage-size : center-stage : arena-margin : arena-offset : arena-size} (require :constants))
 
@@ -231,55 +230,7 @@ vec4 effect(vec4 color, Image tex, vec2 texture_coords, vec2 screen_coords)
 
   ;; Add director 
   (set state.state.director (new-entity Director))
-  (tiny.addEntity ecs.world state.state.director)
-
-  ;; Add walls
-  (set state.state.bottom-wall
-    (new-entity Box2dRectangle
-                {:pos (vec (/ arena-size.x 2) arena-size.y)
-                 :size (vec arena-size.x 10)
-                 :wall true
-                 :category "10000000"
-                 :mask "11111111"}))
-
-  (set state.state.top-wall
-    (new-entity Box2dRectangle
-                {:pos (vec (/ arena-size.x 2) 0)
-                 :size (vec arena-size.x 10)
-                 :wall true
-                 :category "10000000"
-                 :mask "11111111"}))
-
-  (set state.state.left-wall
-    (new-entity Box2dRectangle
-                {:pos (vec 0 (/ arena-size.y 2))
-                 :size (vec 10 arena-size.y)
-                 :wall true
-                 :category "10000000"
-                 :mask "11111111"}))
-
-  (set state.state.right-wall
-    (new-entity Box2dRectangle
-                {:pos (vec arena-size.x (/ arena-size.y 2))
-                 :size (vec 10 arena-size.y)
-                 :wall true
-                 :category "10000000"
-                 :mask "11111111"}))
-
-  (tiny.add ecs.world
-            state.state.bottom-wall
-            state.state.top-wall
-            state.state.left-wall
-            state.state.right-wall))
-; (fire-timeline
-;  (let [(x y) (state.state.left-wall.body:getPosition)]
-;    (var pos (vec x y))
-;    (var t 0)
-;    (while (< t 3)
-;      (let [dt (coroutine.yield)]
-;        (set t (+ t dt))
-;        (set pos (+ pos (vec (* 60 dt) 0)))
-;        (state.state.left-wall.body:setPosition pos.x pos.y)))
+  (tiny.addEntity ecs.world state.state.director))
 
 (main)
 

@@ -5,7 +5,7 @@
 (local {: rgba : hexcolor} (require :color))
 (local lume (require :lib.lume))
 (local {: new-entity : get-id} (require :helpers))
-(local {: Box2dCircle : Box2dRectangle} (require :wall))
+(local {: Box2dCircle : Box2dRectangle} (require :box2d))
 (local state (require :state))
 (local data (require :data))
 (local timeline (require :timeline))

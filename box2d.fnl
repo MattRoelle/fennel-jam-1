@@ -16,6 +16,10 @@
                   self.pos.x self.pos.y
                   self.body-type)))
 
+(λ Box2dEntity.update [self dt]
+  (when self.targpos
+    (self.body:setPosition self.targpos.x self.targpos.y)))
+
 (λ Box2dEntity.draw-world-points [self ?color ?scale]
   (graphics.set-color (or ?color (rgba 1 1 1 1)))
   (love.graphics.push)
