@@ -215,6 +215,8 @@ vec4 effect(vec4 color, Image tex, vec2 texture_coords, vec2 screen_coords)
 (λ draw-bg []
   (graphics.rectangle (vec 0 0) stage-size (hexcolor :212121ff)))
 
+(var reset? false)
+
 (λ main []
   (set-win-size)
 
@@ -234,13 +236,21 @@ vec4 effect(vec4 color, Image tex, vec2 texture_coords, vec2 screen_coords)
                      (love.graphics.pop))})
 
   ;; Add director 
-  (set state.state.director (new-entity Director))
+  (set state.state.director
+       (new-entity Director
+                   {:reset-game
+                    (fn []
+                      (set reset? true))}))
   (tiny.addEntity ecs.world state.state.director))
 
-(main)
-
-{:update
+{:activate main
+ :update
  (fn update [dt set-mode]
-   (tiny.update ecs.world dt))
+   (tiny.update ecs.world dt)
+   (when reset?
+     (set reset? false)
+     (ecs.world:clearEntities)
+     (state.reset-state)
+     (main)))
  :keypressed (fn keypressed [key set-mode])
  :resize set-win-size}

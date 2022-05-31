@@ -105,13 +105,23 @@
                (imm-stateful button state.state.units [k :bstate]
                              {:label :Promote})]]))))]]])
 
+(λ money-display []
+  [view {:display :stack
+         :direction :right
+         :position (vec 50 10)
+         :padding (vec 8 0)
+         :size (vec 200 30)}
+   [[text {:text (.. "$" (tostring state.state.money))
+           :font assets.f32      
+           :color (rgba 1 1 1 1)}]]])
+
 (λ top-row []
   [view {:display :stack
          :direction :right
-         :position (vec -440 (- stage-size.y 192))
+         :position (vec (- stage-size.x 320) 10)
          :padding (vec 8 0)
-         :size (vec stage-size.x 110)}
-   [[text {:text (.. "$" (tostring state.state.money))
+         :size (vec 200 30)}
+   [[text {:text (.. "LEVEL " (tostring state.state.display-level))
            :font assets.f32      
            :color (rgba 1 1 1 1)}]]])
 
@@ -315,6 +325,7 @@
                        :position (vec 10 290)})
         (upgrade-list)
         (unit-list)
+        (money-display)
         (top-row)
         (shop-row)
         (upgrade-screen)
@@ -514,7 +525,7 @@
       (set wall.targpos (wall.pos:clone))
       (table.insert self.wall-timelines
                     (fire-timeline
-                     (timeline.tween 10 wall {:targpos wall.shrink-position}))))))
+                     (timeline.tween 12 wall {:targpos wall.shrink-position} :inOutQuad))))))
 
 (λ Director.reset-walls [self]
   (when self.wall-timelines
@@ -528,44 +539,95 @@
                     (fire-timeline
                      (timeline.tween 2 wall {:targpos wall.pos} :outQuad))))))
 
+(λ Director.title-screen [self]
+  (local spin-in
+         {:z-index 20000
+          :t 0.75
+          :id (get-id)
+          :arena-draw
+          (fn [self]
+            (love.graphics.push)
+            (love.graphics.translate (/ arena-size.x 2)
+                                     (/ arena-size.y 2))
+            (love.graphics.rotate (* self.t 2 math.pi))
+            (love.graphics.scale (* 3 self.t) (* 3 self.t))
+            (graphics.print-centered "FLOOB" assets.f32
+                                     (vec 0 0) (rgba 1 0 0 1))
+            (love.graphics.pop))})
+  (tiny.addEntity ecs.world spin-in)
+  (timeline.tween 1 spin-in {:t 1} :outQuad)
+  (while (not (input.mouse-released?))
+    (coroutine.yield))
+  (set spin-in.dead true))
+  
+
+(λ Director.game-over [self]
+  (local spin-in
+         {:z-index 20000
+          :t 0
+          :id (get-id)
+          :arena-draw
+          (fn [self]
+            (love.graphics.push)
+            (love.graphics.translate (/ arena-size.x 2)
+                                     (/ arena-size.y 2))
+            (love.graphics.rotate (* self.t 2 math.pi))
+            (love.graphics.scale (* 3 self.t) (* 3 self.t))
+            (graphics.print-centered "GAME OVER" assets.f32
+                                     (vec 0 0) (rgba 1 0 0 1))
+            (love.graphics.pop))})
+  (tiny.addEntity ecs.world spin-in)
+  (timeline.tween 1.5 spin-in {:t 1} :outQuad)
+  (each [team teamlist (pairs state.state.teams)]
+    (each [_ unit (pairs teamlist)]
+      (unit:pop)
+      (timeline.wait 0.1)))
+  (timeline.wait 1)
+  (self.reset-game))
 
 (λ Director.main-timeline [self]
- (self:setup-arena-entities)
+  (self:setup-arena-entities)
+  (self:title-screen)
+  ;; Main game loop
+  (while (not state.state.game-over?)
+    (coroutine.yield)
+    (let [level-def (assert (. data.levels state.state.level)
+                            "Error loading level")]
+      (match level-def
+        {:type :combat
+         : group-options
+         : waves}
+        (do
+          (timeline.wait 0.5)
+          (self:restore-unit-state)
+          (self:do-shop-phase)
+          (self:save-unit-state)
+          (self:pre-combat-animation)
+          (self:spawn-enemies group-options waves)
+          (timeline.wait 2)
+          (self:start-walls)
+          (while (and (> state.state.unit-count 0)
+                      (> state.state.enemy-count 0))
+            (coroutine.yield))
+          (timeline.wait 0.5))
+        {:type :upgrade}
+        (do
+          (self:open-upgrade-screen)
+          (while state.state.upgrade-screen-open?
+            (coroutine.yield))))
 
- ;; Main game loop
- (while (not state.state.game-over?)
-   (coroutine.yield)
-   (let [level-def (assert (. data.levels state.state.level)
-                           "Error loading level")]
-     (match level-def
-       {:type :combat
-        : group-options
-        : waves}
-       (do
-         (timeline.wait 0.5)
-         (self:restore-unit-state)
-         (self:do-shop-phase)
-         (self:save-unit-state)
-         (self:pre-combat-animation)
-         (self:spawn-enemies group-options waves)
-         (self:start-walls)
-         (timeline.wait 1.5)
-         (while (> state.state.enemy-count 0)
-           (coroutine.yield))
-         (timeline.wait 0.5))
-       {:type :upgrade}
-       (do
-         (self:open-upgrade-screen)
-         (while state.state.upgrade-screen-open?
-           (coroutine.yield))))
+      (self:reset-walls)
 
-     (self:reset-walls)
+      (when (and (> state.state.unit-count 0)
+                 (= :combat level-def.type))
+        (self:play-win-level-sequence)
+        (set state.state.display-level (+ state.state.display-level 1)))
 
-     (when (and (not state.state.game-over?)
-                (= :combat level-def.type))
-       (self:play-win-level-sequence)
-       (set state.state.display-level (+ state.state.display-level 1)))
-     (set state.state.level (+ state.state.level 1)))))
+      (when (and (> state.state.enemy-count 0)
+                 (= :combat level-def.type))
+        (self:game-over))
+
+      (set state.state.level (+ state.state.level 1)))))
 
       
 
