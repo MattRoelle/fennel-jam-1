@@ -85,10 +85,9 @@
   (let [bstate (or ?state {:hover false})
         (mouse-down? hovering?) (mouse-interaction context)]
     (set bstate.hover hovering?)
-    (set state.state.hover-shop-btn
-         (if hovering? bstate
-             (= state.state.hover-shop-btn bstate) nil
-             state.state.hover-shop-btn))
+    (when hovering?
+      (set bstate.hover-t (+ state.state.time 0.1))
+      (set state.state.hover-shop-btn bstate))
     (when (and hovering? mouse-down?)
       (state.state.director:purchase props.index))
     (set bstate.mouse-down? mouse-down?)

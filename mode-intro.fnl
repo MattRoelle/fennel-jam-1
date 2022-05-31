@@ -60,12 +60,6 @@
   (when e.team
     (tset state.state :teams e.team e.id nil)))
 
-(λ index-system.postProcess [self]
-  ;; hacks
-  (when state.state.team-dirty?
-    (set state.state.team-dirty? false)
-    (state.state.director:save-unit-state)))
-
 (tiny.addSystem ecs.world index-system)
 
 ;; update-system handles calling update on entities with a dt
@@ -104,7 +98,8 @@
   (love.graphics.clear)
   (love.graphics.scale state.state.screen-scale.x state.state.screen-scale.y)
   (love.graphics.setColor 1 1 1 1)
-  (self.bg-quad:setViewport (* -1.5 self.bg-t) self.bg-t
+  (self.bg-quad:setViewport (* -0.5 self.bg-t)
+                            self.bg-t
                             stage-size.x stage-size.y
                             aseprite.bgpat.width aseprite.bgpat.height)
   (love.graphics.draw self.bg-img.img self.bg-quad))

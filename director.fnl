@@ -25,18 +25,6 @@
 
 (local wall-color (hexcolor :4460aaff))
 
-(λ start-game-prompt []
-  [view {:display :absolute}
-    [(when (not state.state.started)
-       (let [sz (vec 400 200)]
-         [view {:display :flex
-                :position (- center-stage (/ sz 2) (vec 0 80))
-                :size sz
-                :color (rgba 0 0 0 1)
-                :padding (vec 4 4)}
-          [[text {:text "Purchase a unit to begin"
-                  :color (rgba 1 1 1 1)}]]]))]])
-
 (λ upgrade-screen []
   [view {:display :absolute}
    [(when state.state.upgrade-screen-open?
@@ -64,15 +52,14 @@
 
 (λ tooltip []
   [view {:display :absolute}
-   [(when state.state.hover-shop-btn
-      (print :hovering)
+   [(when (> (or (?. state.state :hover-shop-btn :hover-t) 0) state.state.time)
       (let [sz (vec 400 200)]
         [view {:display :flex
                :position (- center-stage (/ sz 2))
                :size sz
                :color (rgba 0 0 0 1)
                :padding (vec 4 4)}
-         [[text {:text (get-copy-str :en :units (. state.state.hover-shop-btn.group 1))
+         [[text {:text (get-copy-str :en :units state.state.hover-shop-btn.type)
                  :color (rgba 1 1 1 1)}]]]))]])
 
 (λ upgrade-list []
@@ -113,6 +100,9 @@
                       :color (rgba 1 1 1 1)}]]]
              (imm-stateful button unit [:bstate]
                            {:label "SELL"
+                            :on-click
+                            (fn []
+                              (state.state.director:sell-unit unit))
                             :size (vec 40 32)})]]))]])])
 
 (λ money-display []
@@ -235,8 +225,7 @@
 (λ Director.loot [self]
   (let [k (lume.randomchoice (lume.keys data.unit-types))]
     (table.insert state.state.shop-row
-                  {:cost 3 :group [k]
-                   :label k}))
+                  {:cost 3 :unit-type k :label k}))
   (self:clamp-shop))
 
 (λ Director.buy-roll-shop [self]
@@ -260,8 +249,7 @@
    (for [i 1 5]
      (let [u (self:generate-shop-unit)]
        (table.insert state.state.shop-row
-                       {:cost 3 :group [u]
-                        :label u}))
+                       {:cost 3 :unit-type u :label u}))
      (self:clamp-shop)
      (timeline.wait 0.2))))
 
@@ -369,8 +357,7 @@
         (top-row)
         (shop-row)
         (upgrade-screen)
-        (tooltip)
-        (start-game-prompt)]]])
+        (tooltip)]]])
    (let [fps (love.timer.getFPS)]
      (love.graphics.setColor 1 0 0 1)
      (love.graphics.print (tostring fps) 4 4)
@@ -405,46 +392,36 @@
                         (new-entity Unit {: pos : unit :team :enemy}))))
     (set img.dead true)))
 
-(λ Director.spawn-group [self pos group]
-  (let [p (+ pos (vec (love.math.random -50 50)
-                      (love.math.random -50 50)))]
-    (fire-timeline
-      ;(local img {:pos p
-                  :id (tostring (get-id))
-                  :z-index 100
-                  :__timers {:spawn {:t 0 :active true}}
-                  :arena-draw-fg
-                  (λ [self]
-                    (when (= 0 (% (math.floor (* self.timers.spawn.t 10)) 2))
-                      (graphics.image aseprite.spawn self.pos)))
-      ;(tiny.addEntity ecs.world img)
-      ;(timeline.wait 1)
-      (each [_ unit-type (ipairs group)]
-        (let [def (. data.unit-types unit-type)
-              unit {:type unit-type
-                    :level 1
-                    :hp def.hp}]
-          (tiny.addEntity ecs.world
-                          (new-entity Unit {:pos p : unit})))))))
-      ;(set img.dead true))))
-
 (λ Director.choose-upgrade [self upgrade]
   (set state.state.upgrade-screen-open? false)
   (tset state.state.upgrades upgrade.upgrade
         (+ (or (. state.state.upgrades upgrade.upgrade) 0) 1)))
+
+(λ Director.sell-unit [self unit]
+  (set state.state.team-state
+       (icollect [_ b (ipairs state.state.team-state)]
+         (when (not= b.id unit.id) b)))
+  (tset (state.get-entity-by-id unit.entity-id) :dead true)
+  (self:add-gold unit.level))
 
 (λ Director.purchase [self index]
   (let [shop-item (. state.state.shop-row index)]
     (when (>= state.state.money shop-item.cost)
       (set state.state.money (- state.state.money shop-item.cost))
       (self:screen-shake)
-      (self:spawn-group (vec (* 0.5 arena-size.x)
-                             (/ arena-size.y 2))
-                        shop-item.group)
+      (let [def (. data.unit-types shop-item.unit-type)
+            unit {:type shop-item.unit-type
+                  :level 1
+                  :id (get-id)
+                  :hp def.hp}
+            ent (tiny.addEntity ecs.world
+                                (new-entity Unit {:pos (/ arena-size 2)
+                                                  : unit}))]
+        (table.insert state.state.team-state
+                      (lume.merge ent.unit {:entity-id ent.id})))
       (set state.state.shop-row
            (icollect [ix si (ipairs state.state.shop-row)]
-             (when (not= index ix) si)))
-      (set state.state.team-dirty? true))))
+             (when (not= index ix) si))))))
 
 (λ Director.update [self dt]
   (set state.state.time
@@ -467,19 +444,13 @@
         {:upgrade :bump-dmg-up}])
   (set state.state.upgrade-screen-open? true))
 
-(λ Director.save-unit-state [self]
-  (set state.state.team-state [])
-  (each [_ unit (pairs state.state.teams.player)]
-    (table.insert state.state.team-state
-                  (lume.merge unit.unit
-                              {:hp (. data.unit-types unit.unit.type :hp)}))))
-
 (λ Director.restore-unit-state [self]
     (each [_ unit (pairs state.state.team-state)]
-      (tiny.addEntity ecs.world
-                      (new-entity Unit
-                                  {:pos (/ arena-size 2)
-                                   : unit}))))
+      (let [ent (tiny.addEntity ecs.world
+                                (new-entity Unit
+                                            {:pos (/ arena-size 2)
+                                             : unit}))]
+        (set unit.entity-id ent.id))))
 
 (λ Director.play-win-level-sequence [self]
   (local spin-in
@@ -642,7 +613,6 @@
           (timeline.wait 0.5)
           (self:restore-unit-state)
           (self:do-shop-phase)
-          (self:save-unit-state)
           (self:pre-combat-animation)
           (self:spawn-enemies group-options waves)
           (timeline.wait 2)
