@@ -217,10 +217,15 @@
         a (math.atan2 vy vx)
         theta (self.box2d.body:getAngle)
         da (- theta a)]
-    (when (> (+ (* vx vx) (* vy vy)) 0.1)
-      (self.box2d.body:applyAngularImpulse (* -64 dt da)))))
+    (self.box2d.body:setAngle a)))
+    ;(when (> (+ (* vx vx) (* vy vy)) 0.1)
+    ; (self.box2d.body:applyAngularImpulse (* -64 dt da)))))
 
 (λ Unit.update [self dt]
+  (let [angle (self.box2d.body:getAngle)
+        f (* dt 1000)]
+    (self.box2d.body:applyForce (* f (math.cos angle))
+                                (* f (math.sin angle))))
   (when (<= self.unit.hp 0)
     (set self.dead true))
   (self:look-velocity-dir dt)

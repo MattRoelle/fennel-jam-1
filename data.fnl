@@ -8,8 +8,8 @@
             :shape-type :circle
             :radius 16
             :mass 5
-            :bump-force 1024
-            :bump-timer 3}
+            :bump-force 128
+            :bump-timer 2}
   :shooter {:tier 1
             :ai-type :shoot
             :classes [:shooter]
@@ -20,7 +20,7 @@
  ;; tier 2
  ;; :shotgunner {:ai-type :shoot :hp 15 :bump-damage 3 :tier 2}
  ;; :pulse {:ai-type :bump :hp 15 :bump-damage 3 :linear-damping 0 :tier 2}}
- :enemy-types {:basic {:hp 3
+ :enemy-types {:basic {:hp 20
                        :shape-type :circle
                        :radius [9 14]
                        :bump-damage 2
