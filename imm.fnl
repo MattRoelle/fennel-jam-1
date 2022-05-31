@@ -65,15 +65,14 @@
     (set bstate.mouse-down? mouse-down?)
     (love.graphics.push)
     ;(love.graphics.scale bstate.scale bstate.scale)
-    (graphics.stroke-rectangle context.position context.size
-                               4
-                               (rgba 1 1 1 1) 4)
     (graphics.rectangle context.position context.size
                         (if bstate.hover
                             (rgba 0.4 0.4 0.4 1)
-                            (rgba 0 0 0 1)) 4)
-    (love.graphics.setColor 1 1 1 1)
-    (love.graphics.print (or props.label "na") context.position.x context.position.y)
+                            (rgba 0.2 0.2 0.2 1)) 4)
+    (let [r (get-layout-rect context)]
+      (graphics.print-centered (or props.label "NA") assets.f16
+                               r.center
+                               (rgba 1 1 1 1)))
     (love.graphics.pop)
     bstate))
 
@@ -99,11 +98,6 @@
                             bstate.hover
                             (rgba 0.4 0.4 0.4 1)
                             (rgba 0.2 0.2 0.2 1)))
-    (love.graphics.rectangle :fill
-                            (+ context.position.x props.padding.x)
-                            (+ context.position.y props.padding.y)
-                            (- context.size.x (* props.padding.x 2))
-                            (- context.size.y (* props.padding.y 2)))
     (let [r (get-layout-rect context)]
       (graphics.print-centered (or props.label "NA") assets.f16
                                (+ r.center (vec 0 -16))

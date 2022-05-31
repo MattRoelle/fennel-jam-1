@@ -27,7 +27,7 @@
     _ (love.graphics.polygon :fill (self.shape:getPoints))))
 
 (λ Box2dEntity.draw-world-points [self ?color ?scale]
-  (graphics.set-color (or ?color (rgba 1 1 1 1)))
+  (graphics.set-color (or ?color self.color (rgba 1 1 1 1)))
   (let [(x y) (self.body:getPosition)]
     (match self.shape-type
       :circle (love.graphics.circle :fill x y self.radius)

@@ -23,6 +23,8 @@
 (local assets (require :assets))
 (local effects (require :effects))
 
+(local wall-color (hexcolor :4460aaff))
+
 (λ start-game-prompt []
   (when (not state.state.started)
     (let [sz (vec 400 200)]
@@ -108,27 +110,27 @@
 (λ money-display []
   [view {:display :stack
          :direction :right
-         :position (vec 50 10)
+         :position (vec 80 0)
          :padding (vec 8 0)
          :size (vec 200 30)}
    [[text {:text (.. "$" (tostring state.state.money))
            :font assets.f32      
-           :color (rgba 1 1 1 1)}]]])
+           :color (rgba 0 0 0 1)}]]])
 
 (λ top-row []
   [view {:display :stack
          :direction :right
-         :position (vec (- stage-size.x 320) 10)
+         :position (vec (- stage-size.x 320) 0)
          :padding (vec 8 0)
          :size (vec 200 30)}
    [[text {:text (.. "LEVEL " (tostring state.state.display-level))
-           :font assets.f32      
-           :color (rgba 1 1 1 1)}]]])
+           :font assets.f32
+           :color (rgba 0 0 0 1)}]]])
 
 (λ shop-row []
   [view {:display :stack
          :direction :right
-         :position (vec 0 (- stage-size.y 112))
+         :position (vec 0 (- stage-size.y 89))
          :padding (vec 8 0)
          :size (vec stage-size.x 110)}
    (icollect [ix btn (ipairs state.state.shop-row)]
@@ -270,6 +272,7 @@
     (new-entity Box2dRectangle
                 {:pos (vec (/ arena-size.x 2) (* 1.25 arena-size.y))
                  :shrink-position (vec (/ arena-size.x 2) (* 1 arena-size.y))
+                 :color wall-color
                  :size (vec arena-size.x (* arena-size.y 0.6))
                  :wall true
                  :category "10000000"
@@ -279,6 +282,7 @@
     (new-entity Box2dRectangle
                 {:pos (vec (/ arena-size.x 2) (* -0.25 arena-size.y))
                  :shrink-position (vec (/ arena-size.x 2) (* 0 arena-size.y))
+                 :color wall-color
                  :size (vec arena-size.x (* arena-size.y 0.6))
                  :wall true
                  :category "10000000"
@@ -288,6 +292,7 @@
     (new-entity Box2dRectangle
                 {:pos (vec (* arena-size.x -0.27) (/ arena-size.y 2))
                  :shrink-position (vec (* arena-size.x 0) (/ arena-size.y 2))
+                 :color wall-color
                  :size (vec (* arena-size.x 0.6) arena-size.y)
                  :wall true
                  :category "10000000"
@@ -297,6 +302,17 @@
     (new-entity Box2dRectangle
                 {:pos (vec (* arena-size.x 1.27) (/ arena-size.y 2))
                  :shrink-position (vec (* arena-size.x 1) (/ arena-size.y 2))
+                 :color wall-color
+                 :size (vec (* arena-size.x 0.6) arena-size.y)
+                 :wall true
+                 :category "10000000"
+                 :mask "11111111"}))
+
+  (each [_ w (ipairs [:top-wall :left-wall :bottom-wall :right-wall])]
+    (new-entity Box2dRectangle
+                {:pos (vec (* arena-size.x 1.27) (/ arena-size.y 2))
+                 :shrink-position (vec (* arena-size.x 1) (/ arena-size.y 2))
+                 :color wall-color
                  :size (vec (* arena-size.x 0.6) arena-size.y)
                  :wall true
                  :category "10000000"
@@ -314,15 +330,15 @@
        [(imm-stateful button state.state [:end-turn-btn]
                       {:label "End Turn"
                        :disabled (not= :shop state.state.phase)
-                       :size (vec 60 60)
+                       :size (vec 140 80)
                        :on-click #(self:end-turn)
-                       :position (vec 10 210)})
+                       :position (vec (- stage-size.x 160) (- stage-size.y 88))})
         (imm-stateful button state.state [:reroll-shop-btn]
                       {:label "Reroll 1"
                        :disabled (not= :shop state.state.phase)
-                       :size (vec 60 60)
+                       :size (vec 100 80)
                        :on-click #(self:buy-roll-shop)
-                       :position (vec 10 290)})
+                       :position (vec 20 350)})
         (upgrade-list)
         (unit-list)
         (money-display)

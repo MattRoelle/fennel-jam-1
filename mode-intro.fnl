@@ -10,6 +10,7 @@
 (local {: new-entity : get-mouse-position} (require :helpers))
 (local aabb (require :aabb))
 (local Director (require :director))
+(local aseprite (require :aseprite))
 
 (local {: stage-size : center-stage : arena-margin : arena-offset : arena-size} (require :constants))
 
@@ -87,9 +88,24 @@
 (local draw-system (tiny.sortedProcessingSystem))
 (set draw-system.filter (tiny.requireAll :draw :z-index))
 
+(set draw-system.bg-img aseprite.bgpat)
+(draw-system.bg-img.img:setWrap :repeat :repeat)
+(set draw-system.bg-t 0)
+(set draw-system.bg-quad
+     (love.graphics.newQuad 0 0
+                            aseprite.bgpat.width aseprite.bgpat.height
+                            stage-size.x stage-size.y))
+
 (λ draw-system.preProcess [self dt]
+  (set self.bg-t (+ self.bg-t (* 10 dt)))
   (love.graphics.push)
-  (love.graphics.scale state.state.screen-scale.x state.state.screen-scale.y))
+  (love.graphics.clear)
+  (love.graphics.scale state.state.screen-scale.x state.state.screen-scale.y)
+  (love.graphics.setColor 1 1 1 1)
+  (self.bg-quad:setViewport (* -1.5 self.bg-t) self.bg-t
+                            stage-size.x stage-size.y
+                            aseprite.bgpat.width aseprite.bgpat.height)
+  (love.graphics.draw self.bg-img.img self.bg-quad))
   
 (λ draw-system.process [self e dt]
   (e:draw))
@@ -161,20 +177,22 @@ vec4 effect(vec4 color, Image tex, vec2 texture_coords, vec2 screen_coords)
   (love.graphics.setColor 1 1 1 1)
   (love.graphics.push)
   (love.graphics.origin)
-  (graphics.set-color (hexcolor :444444f1))
-  (love.graphics.rectangle :fill 0 0 arena-size.x arena-size.y)
+  (love.graphics.draw aseprite.arena-bg.img)
   (love.graphics.setColor 1 1 1 1)
-  (love.graphics.translate state.state.camera-shake.x state.state.camera-shake.y)
   (love.graphics.setShader arena-shader)
+  (love.graphics.translate state.state.camera-shake.x state.state.camera-shake.y)
   (love.graphics.draw arena-canvas-entities)
-  (love.graphics.setShader)
   (each [k v (pairs state.state.muzzle-flashes)]
     (if (> state.state.time v.t)
         (tset state.state.muzzle-flashes k nil)
         (graphics.circle v.pos (* v.scale (love.math.random 14 32))
                          (rgba 1 1 1 1))))
   (love.graphics.pop)
-  (love.graphics.setCanvas))
+  (love.graphics.setColor 0 0 0 1)
+  (love.graphics.setLineWidth 8)
+  (love.graphics.rectangle :line 0 0 arena-size.x arena-size.y)
+  (love.graphics.setCanvas)
+  (love.graphics.setShader))
 
 (λ arena-draw-system.compare [self e1 e2]
   (> e1.z-index e2.z-index))
@@ -226,12 +244,12 @@ vec4 effect(vec4 color, Image tex, vec2 texture_coords, vec2 screen_coords)
                    :draw
                    (λ self []
                      ;(draw-bg)
-                     (love.graphics.setColor 1 1 1 1)
                      (love.graphics.push)
                      (love.graphics.translate (+ arena-margin.x arena-offset.x)
                                               (+ arena-margin.y arena-offset.y))
                      ;(arena-moonshine.draw
-                     ;(fn []
+                                        ;(fn []
+                     (love.graphics.setColor 1 1 1 1)
                      (love.graphics.draw arena-canvas 0 0)
                      (love.graphics.pop))})
 
