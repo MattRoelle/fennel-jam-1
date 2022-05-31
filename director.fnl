@@ -16,7 +16,7 @@
 (local {: text : view : image : shop-button : button} (require :imm))
 (local {: stage-size : center-stage : arena-margin : arena-offset : arena-size} (require :constants))
 (local {: new-entity : get-mouse-position} (require :helpers))
-(local {: Unit : Enemy} (require :unit))
+(local {: Unit} (require :unit))
 (local data (require :data))
 (local aseprite (require :aseprite))
 (local {: get-copy-str} (require :copy))
@@ -215,7 +215,7 @@
     (set state.state.money (- state.state.money 1))
     (self:roll-shop)))
 
-(λ Director.get-shop-tier [self] 2)
+(λ Director.get-shop-tier [self] 1)
   ;(if (> state.state.level 4) 2 1))
 
 (λ Director.generate-shop-unit [self]
@@ -350,7 +350,7 @@
             unit {:hp def.hp
                   :type enemy-type}]
         (tiny.addEntity ecs.world
-                        (new-entity Enemy {: pos : unit}))))
+                        (new-entity Unit {: pos : unit :team :enemy}))))
     (set img.dead true)))
 
 (λ Director.spawn-group [self pos group]
@@ -506,53 +506,40 @@
               (/ arena-size.y 2))
          grp)))))
 
-(λ Director.start-combat [self]
-  (timeline.wait 1.5)
- ;(set self.divider.targpos self.divider.pos)
- ;(timeline.wait 0.1)
- ;(set self.divider.targpos nil)
-  (each [team teamlist (pairs state.state.teams)]
-    (print :team team)
-    (each [_ unit (ipairs teamlist)]
-      (print :unit unit)
-      (unit.box2d.body:applyLinearImpulse
-       (if (= team :player) 100 -100)
-       (love.math.random -10 10)))))
-
 (λ Director.main-timeline [self]
-  (self:setup-arena-entities)
+ (self:setup-arena-entities)
 
-  ;; Main game loop
-  (while (not state.state.game-over?)
-    (coroutine.yield)
-    (let [level-def (assert (. data.levels state.state.level)
-                            "Error loading level")]
-      (match level-def
-        {:type :combat
-         : group-options
-         : waves}
-        (do
-          (timeline.wait 0.5)
-          (self:restore-unit-state)
-          (self:do-shop-phase)
-          (self:save-unit-state)
-          (self:pre-combat-animation)
-          (self:spawn-enemies group-options waves)
-          (self:start-combat)
-          (while (> state.state.enemy-count 0)
-            (coroutine.yield))
-          (timeline.wait 0.5))
-        {:type :upgrade}
-        (do
-          (self:open-upgrade-screen)
-          (while state.state.upgrade-screen-open?
-            (coroutine.yield))))
+ ;; Main game loop
+ (while (not state.state.game-over?)
+   (coroutine.yield)
+   (let [level-def (assert (. data.levels state.state.level)
+                           "Error loading level")]
+     (match level-def
+       {:type :combat
+        : group-options
+        : waves}
+       (do
+         (timeline.wait 0.5)
+         (self:restore-unit-state)
+         (self:do-shop-phase)
+         (self:save-unit-state)
+         (self:pre-combat-animation)
+         (self:spawn-enemies group-options waves)
+         (timeline.wait 1.5)
+         (while (> state.state.enemy-count 0)
+           (coroutine.yield))
+         (timeline.wait 0.5))
+       {:type :upgrade}
+       (do
+         (self:open-upgrade-screen)
+         (while state.state.upgrade-screen-open?
+           (coroutine.yield))))
 
-      (when (and (not state.state.game-over?)
-                 (= :combat level-def.type))
-        (self:play-win-level-sequence)
-        (set state.state.display-level (+ state.state.display-level 1)))
-      (set state.state.level (+ state.state.level 1)))))
+     (when (and (not state.state.game-over?)
+                (= :combat level-def.type))
+       (self:play-win-level-sequence)
+       (set state.state.display-level (+ state.state.display-level 1)))
+     (set state.state.level (+ state.state.level 1)))))
 
       
 

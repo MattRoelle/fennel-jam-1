@@ -49,30 +49,35 @@
 (λ Unit.init [self]
   (set self.scale (vec 1 1))
   (assert self.unit :must-pass-unit)
-  (set self.def (. data.unit-types self.unit.type))
-  (set state.state.unit-count (+ state.state.unit-count 1))
+  (set self.def (or (. data.unit-types self.unit.type)
+                    (. data.enemy-types self.unit.type)))
+  (if (= :player self.team)
+    (set state.state.unit-count (+ state.state.unit-count 1))
+    (set state.state.enemy-count (+ state.state.enemy-count 1)))
   (set self.bump-force (or self.def.bump-force 64))
   (self:gen-eyes)
-
   (set self.box2d
        (new-entity
-        (match self.unit.type
-          :warrior Box2dCircle
+        (match (or self.def.shape-type)
+          :circle Box2dCircle
           _ Box2dPolygon)
-        {:radius (or self.def.radius 8)
-         :points
-         (match self.unit.type
-           :shooter [-10 0 -10 -10 0 -10 10 0 10 10 0 10]
-           _ [-10 0 0 -10 10 0 0 10])
+        {:radius (if (= :table (type self.def.radius))
+                     (love.math.random (. self.def.radius 1) (. self.def.radius 2))
+                     (or self.def.radius 8))
+         :points (or self.def.points [-10 0 0 -10 10 0 0 10])
          :size (or self.def.size (vec 8 8))
          :pos self.pos
          :body-type :dynamic
          :angular-damping (or self.def.angular-damping 2)
-         :linear-damping (or self.def.linear-damping 1.5)
+         :linear-damping (or self.def.linear-damping 0.5)
          :mass (or self.def.mass 1)
          :restitution (or self.def.restitution 0.99)
-         :category "00000001"
-         :mask "10001011"}))
+         :category (if (= self.team :player)
+                     "00000001"
+                     "00000010")
+         :mask (if (= self.team :player)
+                 "10001011"
+                 "10000111")}))
   (self.box2d:init self.id)
   (let [iv (polar-vec2 (* (math.random) 2 math.pi) 20)]
     (self.box2d.body:applyLinearImpulse iv.x iv.y))
@@ -185,7 +190,9 @@
 (λ Unit.destroy [self]
   (effects.box2d-explode (self:get-body-pos) 5 4 (rgba 1 1 1 1))
   (self.box2d.body:destroy)
-  (set state.state.unit-count (- state.state.unit-count 1)))
+  (if (= :player self.team)
+    (set state.state.unit-count (- state.state.unit-count 1))
+    (set state.state.enemy-count (- state.state.enemy-count 1))))
 
 (λ Unit.bump-enemy [self e]
   (let [(ex ey) (e.box2d.body:getPosition)
@@ -219,11 +226,9 @@
   (self:look-velocity-dir dt)
   (if (and self.targpos (= :shop state.state.phase))
     (self.box2d.body:setPosition self.targpos.x self.targpos.y)
-    (match self.unit.type
-      :warrior (self:bump-update dt)
-      :shooter (self:shoot-update dt)
-      :shotgunner (self:shoot-update dt)
-      :pulse (self:pulse-update dt))))
+    (match (or self.def.ai-type :bump)
+      :bump (self:bump-update dt)
+      :shoot (self:shoot-update dt))))
 
 (set Unit.__defaults
      {:z-index 10
@@ -233,27 +238,6 @@
        :shoot-tick {:t 0 :active true :random true}}
       :pos (vec 32 32)
       :team :player})
-
-(local Enemy (setmetatable {} Unit))
-(set Enemy.__index Enemy)
-
-(λ Enemy.destroy [self]
-  (effects.box2d-explode (self:get-body-pos) 5 4 (rgba 1 0 0 1))
-  ;; (when (< (math.random) 0.1)
-  ;;   (state.state.director:add-gold 1))
-  (self.box2d.body:destroy)
-  ;; (when (> (math.random) 0.5)
-  ;;   (state.state.director:loot self))
-  (print :destroying-enemy)
-  (set state.state.enemy-count
-       (- state.state.enemy-count 1)))
-
-(λ Enemy.update [self dt]
-  (self:look-velocity-dir dt)
-  (when (<= self.unit.hp 0)
-    (set self.dead true))
-  (match self.unit.type
-    _ (self:bump-update dt)))
 
 (fn get-random-points []
   (local ret [])
@@ -265,45 +249,4 @@
       (table.insert ret (* r (math.sin t)))))
   ret)
 
-(λ Enemy.init [self]
-  (set self.scale (vec 1 1))
-  (assert self.unit :must-pass-unit)
-  (set self.def (. data.enemy-types self.unit.type))
-  (set state.state.enemy-count (+ state.state.enemy-count 1))
-  (self:gen-eyes)
-  (set self.box2d
-       (new-entity (match self.unit.type
-                     :boss-1 Box2dRectangle
-                     _ Box2dCircle)
-                   {:color (rgba (math.abs (math.random))
-                                 (math.abs (math.random))
-                                 (math.abs (math.random))
-                                 1)
-                    :points (get-random-points)
-                    :radius
-                    (match self.unit.type
-                      :brute-1 40
-                      :boss-1 30
-                      _ (love.math.random 8 14))
-                    :size
-                    (match self.unit.type
-                      :boss-1 (vec 32 32)
-                      _ (vec 8 8))
-                    :pos self.pos
-                    :body-type :dynamic
-                    :linear-damping 1
-                    :angular-damping (or self.def.angular-damping 2)
-                    :mass 3
-                    :angle 0
-                    :restitution 0.99
-                    :category "00000010"
-                    :mask "10000111"}))
-  (self.box2d:init self.id)
-  (let [iv (polar-vec2 (* (math.random) 2 math.pi) 20)]
-    (self.box2d.body:applyLinearImpulse iv.x iv.y)))
-
-(set Enemy.__defaults
-     (lume.merge Unit.__defaults {:team :enemy}))
-
-{: Unit
- : Enemy}
+{: Unit}
