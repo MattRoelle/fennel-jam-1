@@ -437,12 +437,13 @@
   (set state.state.upgrade-screen-open? true))
 
 (λ Director.restore-unit-state [self]
-    (each [_ unit (pairs state.state.team-state)]
-      (let [ent (tiny.addEntity ecs.world
-                                (new-entity Unit
-                                            {:pos (/ arena-size 2)
-                                             : unit}))]
-        (set unit.entity-id ent.id))))
+  (each [_ unit (pairs state.state.team-state)]
+    (set unit.hp (. data.unit-types unit.type :hp))
+    (let [ent (tiny.addEntity ecs.world
+                              (new-entity Unit
+                                          {:pos (/ arena-size 2)
+                                           : unit}))]
+      (set unit.entity-id ent.id))))
 
 (λ Director.play-win-level-sequence [self]
   (local spin-in

@@ -27,8 +27,14 @@
 
 (λ Unit.take-dmg [self v]
   (set self.unit.hp (- self.unit.hp v))
-  ;; (effects.text-flash (.. "-" v) (- (self:get-body-pos) (vec 4 0))
-  ;;                     (rgba 1 1 1 1) assets.f32)
+  (effects.text-flash (.. "-" v)
+                      (+ (- (self:get-body-pos) (vec 4 0))
+                         (vec (love.math.random -10 10)
+                              (love.math.random -10 10)))
+                      (if (= self.team :enemy)
+                          (rgba 1 1 1 1)
+                          (rgba 1 0 0 1))
+                      assets.f32)
   (self:flash))
 
 (λ Unit.flash [self]
@@ -87,15 +93,12 @@
 
 
 (λ Unit.get-unit-color [self]
-  (match self.unit.type
-    :warrior  (hexcolor :ef7d57ff)
-    :shotgunner (hexcolor :38b764ff)
+  (match self.def.color
+    :enemy (hexcolor :b13253ff)
+    :bumper (hexcolor :ef7d57ff)
     :shooter (hexcolor :38b764ff)
-    :pulse  (hexcolor :41a6f6ff)
-    :basic (hexcolor :b13e53ff)
-    :brute-1 (hexcolor :b13e53ff)
-    :square-1 (hexcolor :b13e53ff)
-    _ palette.index.ix10))
+    :support (hexcolor :41a6f6ff)
+    _ (rgba 1 1 1 1)))
 
 (λ Unit.pop [self]
   (fire-timeline

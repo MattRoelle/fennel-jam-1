@@ -35,11 +35,14 @@
                 :id (tostring (get-id))
                 :z-index 100
                 :__timers {:spawn {:t 0 :active true}}
-                :arena-draw
+                :arena-draw-fg
                 (λ [self]
                   (graphics.print-centered s (or ?font assets.f32)
                                            (+ self.pos (vec 0 (* self.timers.spawn.t -100)))
-                                           (rgba color.r color.g color.b (- 1 self.timers.spawn.t))))})
+                                           (rgba color.r color.g color.b
+                                                 (if (< 0.5 self.timers.spawn.t)
+                                                     1
+                                                     (- 1 (* 2 (- self.timers.spawn.t 0.5)))))))})
     (tiny.addEntity ecs.world txt)
     (timeline.wait 1)
     (set txt.dead true)))

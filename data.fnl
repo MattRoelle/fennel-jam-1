@@ -1,25 +1,42 @@
 {:unit-types
  ;; tier 1
- {:warrior {:tier 1 
-            :ai-type :bump
-            :classes [:warrior]
-            :hp 30
-            :bump-damage 10
-            :shape-type :circle
-            :radius 16
-            :mass 5
-            :bump-force 256
-            :bump-timer 2}
-  :shooter {:tier 1
-            :ai-type :shoot
-            :classes [:shooter]
-            :points [-10 0 -10 -10 0 -10 10 0 10 10 0 10]
-            :hp 15
-            :linear-damping 0.001
-            :range 0.7
-            :fire-speed 50
-            :bump-damage 3
-            :fire-rate 2.5}}
+ {:bumper
+  {:tier 1 
+   :ai-type :bump
+   :classes [:fighter]
+   :hp 30
+   :bump-damage 10
+   :shape-type :circle
+   :radius 16
+   :mass 5
+   :bump-force 256
+   :color :bumper
+   :bump-timer 2}
+  :inhaler
+  {:tier 1 
+   :ai-type :bump
+   :classes [:fighter]
+   :hp 30
+   :bump-damage 10
+   :shape-type :polygon
+   :points [-12 4 -12 -12 0 -12 10 0 0 12]
+   :radius 16
+   :mass 5
+   :color :bumper
+   :bump-force 256
+   :bump-timer 2}
+  :shooter
+  {:tier 1
+   :ai-type :shoot
+   :color :shooter
+   :classes [:shooter]
+   :points [-10 0 -10 -10 0 -10 10 0 10 10 0 10]
+   :hp 15
+   :linear-damping 0.001
+   :range 0.7
+   :fire-speed 50
+   :bump-damage 3
+   :fire-rate 2.5}}
  ;; tier 2
  ;; :shotgunner {:ai-type :shoot :hp 15 :bump-damage 3 :tier 2}
  ;; :pulse {:ai-type :bump :hp 15 :bump-damage 3 :linear-damping 0 :tier 2}}
@@ -27,6 +44,7 @@
  {:basic {:hp 20
           :shape-type :circle
           :radius [9 14]
+          :color :enemy
           :bump-force 128
           :bump-damage 2
           :ai-type :bump}}
