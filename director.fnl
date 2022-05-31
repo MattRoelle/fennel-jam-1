@@ -26,50 +26,54 @@
 (local wall-color (hexcolor :4460aaff))
 
 (λ start-game-prompt []
-  (when (not state.state.started)
-    (let [sz (vec 400 200)]
-      [view {:display :flex
-             :position (- center-stage (/ sz 2) (vec 0 80))
-             :size sz
-             :color (rgba 0 0 0 1)
-             :padding (vec 4 4)}
-       [[text {:text "Purchase a unit to begin"
-               :color (rgba 1 1 1 1)}]]])))
+  [view {:display :absolute}
+    [(when (not state.state.started)
+       (let [sz (vec 400 200)]
+         [view {:display :flex
+                :position (- center-stage (/ sz 2) (vec 0 80))
+                :size sz
+                :color (rgba 0 0 0 1)
+                :padding (vec 4 4)}
+          [[text {:text "Purchase a unit to begin"
+                  :color (rgba 1 1 1 1)}]]]))]])
 
 (λ upgrade-screen []
-  (when state.state.upgrade-screen-open?
-    (let [sz (vec 600 300)]
-      [view {:display :flex
-             :position (- center-stage (/ sz 2) (vec 0 60))
-             :size sz
-             :color (rgba 0 0 0 1)
-             :flex-direction :column
-             :padding (vec 4 4)}
-       [[text {:text "Choose Upgrade"
-               :font assets.f32
-               :color (rgba 0 0 0 1)}]
-        [view {:display :flex}
-          (icollect [ix upgrade (ipairs state.state.upgrade-choices)]
-            [view {:display :flex
-                   :flex-direction :column}
-             [[text {:text upgrade.upgrade
-                     :font assets.f32
-                     :color (rgba 1 1 1 1)}]
-              (imm-stateful button upgrade [:bstate]
-                            {:label :Choose
-                             :on-click #(state.state.director:choose-upgrade upgrade)})]])]]])))
+  [view {:display :absolute}
+   [(when state.state.upgrade-screen-open?
+      (let [sz (vec 600 300)]
+        [view {:display :flex
+               :position (- center-stage (/ sz 2) (vec 0 60))
+               :size sz
+               :color (rgba 0 0 0 1)
+               :flex-direction :column
+               :padding (vec 4 4)}
+         [[text {:text "Choose Upgrade"
+                 :font assets.f32
+                 :color (rgba 0 0 0 1)}]
+          [view {:display :flex}
+            (icollect [ix upgrade (ipairs state.state.upgrade-choices)]
+              [view {:display :flex
+                     :flex-direction :column}
+               [[text {:text upgrade.upgrade
+                       :font assets.f32
+                       :color (rgba 1 1 1 1)}]
+                (imm-stateful button upgrade [:bstate]
+                              {:label :Choose
+                               :on-click #(state.state.director:choose-upgrade upgrade)})]])]]]))]])
           
 
 (λ tooltip []
-  (when state.state.hover-shop-btn
-    (let [sz (vec 400 200)]
-      [view {:display :flex
-             :position (- center-stage (/ sz 2))
-             :size sz
-             :color (rgba 0 0 0 1)
-             :padding (vec 4 4)}
-       [[text {:text (get-copy-str :en :units (. state.state.hover-shop-btn.group 1))
-               :color (rgba 1 1 1 1)}]]])))
+  [view {:display :absolute}
+   [(when state.state.hover-shop-btn
+      (print :hovering)
+      (let [sz (vec 400 200)]
+        [view {:display :flex
+               :position (- center-stage (/ sz 2))
+               :size sz
+               :color (rgba 0 0 0 1)
+               :padding (vec 4 4)}
+         [[text {:text (get-copy-str :en :units (. state.state.hover-shop-btn.group 1))
+                 :color (rgba 1 1 1 1)}]]]))]])
 
 (λ upgrade-list []
   [view {:display :stack
@@ -88,20 +92,28 @@
          :position (vec (- stage-size.x arena-margin.x) (/ arena-margin.y 2))
          :size (vec arena-margin.x stage-size.y)
          :padding (vec 4 4)}
-   [[view {:color (rgba 0.5 0.3 0.3 0)
-           :display :stack
-           :direction :down}
-     (when (> state.state.unit-count 0)
-       (icollect [ix unit (ipairs state.state.team-state)]
-         [view {:size (vec (- arena-margin.x 10) 40)
-                :color (rgba 0.1 0.1 0.1 1)
-                :display :stack
-                :direction :right}
-          [[text {:text unit.type :color (rgba 1 1 1 1)
-                  :size (vec 90 40)}]
-           (imm-stateful button unit [:bstate]
-                         {:label "SELL"
-                          :size (vec 40 40)})]]))]]])
+   (when (= :shop state.state.phase)
+     [[view {:color (rgba 0.5 0.3 0.3 0)
+             :display :stack
+             :direction :down}
+       (when (> state.state.unit-count 0)
+         (icollect [ix unit (ipairs state.state.team-state)]
+           [view {:size (vec (- arena-margin.x 10) 40)
+                  :display :stack
+                  :padding (vec 0 2)
+                  :direction :right}
+            [[view {:text unit.type
+                    :color (rgba 0.1 0.1 0.1 1)
+                    :display :flex
+                    :flex-direction :column
+                    :size (vec 90 32)}
+              [[text {:text unit.type
+                      :color (rgba 1 1 1 1)}]
+               [text {:text (.. "Lv." unit.level)
+                      :color (rgba 1 1 1 1)}]]]
+             (imm-stateful button unit [:bstate]
+                           {:label "SELL"
+                            :size (vec 40 32)})]]))]])])
 
 (λ money-display []
   [view {:display :stack

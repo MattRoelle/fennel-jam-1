@@ -68,7 +68,7 @@
     (graphics.rectangle context.position context.size
                         (if bstate.hover
                             (rgba 0.4 0.4 0.4 1)
-                            (rgba 0.2 0.2 0.2 1)) 4)
+                            (rgba 0.2 0.2 0.2 1)))
     (let [r (get-layout-rect context)]
       (graphics.print-centered (or props.label "NA") assets.f16
                                r.center
