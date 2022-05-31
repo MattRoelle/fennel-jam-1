@@ -53,16 +53,18 @@
 (λ index-system.onAdd [self e]
   (tset state.state.idmap e.id e)
   (when e.team
-    (tset state.state :teams e.team e.id e))
-  (when e.unit-type
-    (tset state.state.units e.unit-type e.id e)))
+    (tset state.state :teams e.team e.id e)))
 
 (λ index-system.onRemove [self e]
   (tset state.state.idmap e.id nil)
   (when e.team
-    (tset state.state :teams e.team e.id nil))
-  (when e.unit-type
-    (tset state.state.units e.unit-type e.id nil)))
+    (tset state.state :teams e.team e.id nil)))
+
+(λ index-system.postProcess [self]
+  ;; hacks
+  (when state.state.team-dirty?
+    (set state.state.team-dirty? false)
+    (state.state.director:save-unit-state)))
 
 (tiny.addSystem ecs.world index-system)
 
@@ -118,17 +120,40 @@
   
 (tiny.addSystem ecs.world draw-system)
 
-;; arena-draw system handles drawing in order of highest-to-lowest z-index
+;; arena-draw and arena-draw-fg system handles drawing in order of highest-to-lowest z-index
 ;; draws to arena canvas
 (local arena-canvas (love.graphics.newCanvas arena-size.x arena-size.y))
+(local arena-canvas-fg (love.graphics.newCanvas arena-size.x arena-size.y))
 (local arena-canvas-entities (love.graphics.newCanvas arena-size.x arena-size.y))
 (arena-canvas:setFilter :nearest :nearest)
+(arena-canvas-fg:setFilter :nearest :nearest)
 (arena-canvas-entities:setFilter :nearest :nearest)
 
 (local arena-moonshine (moonshine arena-size.x arena-size.y moonshine.effects.dmg))
 (set arena-moonshine.dmg.palette "default")
 ;(set arena-moonshine.posterize.num_bands 16)
 ;(arena-moonshine.chain moonshine.effects.dmg)
+
+(local arena-draw-fg-system (tiny.sortedProcessingSystem))
+(set arena-draw-fg-system.filter (tiny.requireAll :arena-draw-fg :z-index))
+
+(λ arena-draw-fg-system.preProcess [self]
+  (love.graphics.setCanvas arena-canvas-fg)
+  (love.graphics.push)
+  (love.graphics.clear)
+  (love.graphics.origin))
+
+(λ arena-draw-fg-system.process [self e dt]
+  (e:arena-draw-fg))
+
+(λ arena-draw-fg-system.postProcess [self]
+  (love.graphics.pop)
+  (love.graphics.setCanvas))
+
+(λ arena-draw-fg-system.compare [self e1 e2]
+  (> e1.z-index e2.z-index))
+  
+(tiny.addSystem ecs.world arena-draw-fg-system)
 
 (local arena-draw-system (tiny.sortedProcessingSystem))
 (set arena-draw-system.filter (tiny.requireAll :arena-draw :z-index))
@@ -182,6 +207,8 @@ vec4 effect(vec4 color, Image tex, vec2 texture_coords, vec2 screen_coords)
   (love.graphics.setShader arena-shader)
   (love.graphics.translate state.state.camera-shake.x state.state.camera-shake.y)
   (love.graphics.draw arena-canvas-entities)
+  (love.graphics.setShader)
+  (love.graphics.draw arena-canvas-fg)
   (each [k v (pairs state.state.muzzle-flashes)]
     (if (> state.state.time v.t)
         (tset state.state.muzzle-flashes k nil)
@@ -191,8 +218,7 @@ vec4 effect(vec4 color, Image tex, vec2 texture_coords, vec2 screen_coords)
   (love.graphics.setColor 0 0 0 1)
   (love.graphics.setLineWidth 8)
   (love.graphics.rectangle :line 0 0 arena-size.x arena-size.y)
-  (love.graphics.setCanvas)
-  (love.graphics.setShader))
+  (love.graphics.setCanvas))
 
 (λ arena-draw-system.compare [self e1 e2]
   (> e1.z-index e2.z-index))

@@ -90,22 +90,18 @@
          :padding (vec 4 4)}
    [[view {:color (rgba 0.5 0.3 0.3 0)
            :display :stack
-           :direction :down
-           :size (vec 800 100)}
+           :direction :down}
      (when (> state.state.unit-count 0)
-       (icollect [k grp (pairs state.state.units)]
-         (let [keys (lume.keys grp)]
-           (when (> (length keys) 0)
-             [view {:size (vec 100 40)
-                    :color (rgba 0.1 0.1 0.1 1)
-                    :display :flex
-                    :flex-direction :column}
-              [[text {:text k
-                      :color (rgba 1 1 1 1)}]
-               [text {:text (length keys)
-                      :color (rgba 1 1 1 1)}]
-               (imm-stateful button state.state.units [k :bstate]
-                             {:label :Promote})]]))))]]])
+       (icollect [ix unit (ipairs state.state.team-state)]
+         [view {:size (vec (- arena-margin.x 10) 40)
+                :color (rgba 0.1 0.1 0.1 1)
+                :display :stack
+                :direction :right}
+          [[text {:text unit.type :color (rgba 1 1 1 1)
+                  :size (vec 90 40)}]
+           (imm-stateful button unit [:bstate]
+                         {:label "SELL"
+                          :size (vec 40 40)})]]))]]])
 
 (λ money-display []
   [view {:display :stack
@@ -113,9 +109,10 @@
          :position (vec 80 0)
          :padding (vec 8 0)
          :size (vec 200 30)}
-   [[text {:text (.. "$" (tostring state.state.money))
-           :font assets.f32      
-           :color (rgba 0 0 0 1)}]]])
+   [(when state.state.started
+      [text {:text (.. "$" (tostring state.state.money))
+             :font assets.f32      
+             :color (rgba 0 0 0 1)}])]])
 
 (λ top-row []
   [view {:display :stack
@@ -123,9 +120,10 @@
          :position (vec (- stage-size.x 320) 0)
          :padding (vec 8 0)
          :size (vec 200 30)}
-   [[text {:text (.. "LEVEL " (tostring state.state.display-level))
-           :font assets.f32
-           :color (rgba 0 0 0 1)}]]])
+   [(when state.state.started
+      [text {:text (.. "LEVEL " (tostring state.state.display-level))
+             :font assets.f32
+             :color (rgba 0 0 0 1)}])]])
 
 (λ shop-row []
   [view {:display :stack
@@ -272,6 +270,9 @@
     (new-entity Box2dRectangle
                 {:pos (vec (/ arena-size.x 2) (* 1.25 arena-size.y))
                  :shrink-position (vec (/ arena-size.x 2) (* 1 arena-size.y))
+                 :arena-draw-fg
+                 (fn [self]
+                   (self:draw-world-points))
                  :color wall-color
                  :size (vec arena-size.x (* arena-size.y 0.6))
                  :wall true
@@ -282,6 +283,9 @@
     (new-entity Box2dRectangle
                 {:pos (vec (/ arena-size.x 2) (* -0.25 arena-size.y))
                  :shrink-position (vec (/ arena-size.x 2) (* 0 arena-size.y))
+                 :arena-draw-fg
+                 (fn [self]
+                   (self:draw-world-points))
                  :color wall-color
                  :size (vec arena-size.x (* arena-size.y 0.6))
                  :wall true
@@ -292,6 +296,9 @@
     (new-entity Box2dRectangle
                 {:pos (vec (* arena-size.x -0.27) (/ arena-size.y 2))
                  :shrink-position (vec (* arena-size.x 0) (/ arena-size.y 2))
+                 :arena-draw-fg
+                 (fn [self]
+                   (self:draw-world-points))
                  :color wall-color
                  :size (vec (* arena-size.x 0.6) arena-size.y)
                  :wall true
@@ -302,6 +309,9 @@
     (new-entity Box2dRectangle
                 {:pos (vec (* arena-size.x 1.27) (/ arena-size.y 2))
                  :shrink-position (vec (* arena-size.x 1) (/ arena-size.y 2))
+                 :arena-draw-fg
+                 (fn [self]
+                   (self:draw-world-points))
                  :color wall-color
                  :size (vec (* arena-size.x 0.6) arena-size.y)
                  :wall true
@@ -329,13 +339,15 @@
      [[view {:display :absolute}
        [(imm-stateful button state.state [:end-turn-btn]
                       {:label "End Turn"
-                       :disabled (not= :shop state.state.phase)
+                       :disabled (or (not state.state.started)
+                                     (not= :shop state.state.phase))
                        :size (vec 140 80)
                        :on-click #(self:end-turn)
                        :position (vec (- stage-size.x 160) (- stage-size.y 88))})
         (imm-stateful button state.state [:reroll-shop-btn]
                       {:label "Reroll 1"
-                       :disabled (not= :shop state.state.phase)
+                       :disabled (or (not state.state.started)
+                                     (not= :shop state.state.phase))
                        :size (vec 100 80)
                        :on-click #(self:buy-roll-shop)
                        :position (vec 20 350)})
@@ -367,7 +379,7 @@
                 :id (tostring (get-id))
                 :z-index 100
                 :__timers {:spawn {:t 0 :active true}}
-                :arena-draw
+                :arena-draw-fg
                 (λ [self]
                   (when (= 0 (% (math.floor (* self.timers.spawn.t 10)) 2))
                     (graphics.image aseprite.warn self.pos)))})
@@ -382,7 +394,6 @@
     (set img.dead true)))
 
 (λ Director.spawn-group [self pos group]
-  (set state.state.started true)
   (let [p (+ pos (vec (love.math.random -50 50)
                       (love.math.random -50 50)))]
     (fire-timeline
@@ -390,7 +401,7 @@
                   :id (tostring (get-id))
                   :z-index 100
                   :__timers {:spawn {:t 0 :active true}}
-                  :arena-draw
+                  :arena-draw-fg
                   (λ [self]
                     (when (= 0 (% (math.floor (* self.timers.spawn.t 10)) 2))
                       (graphics.image aseprite.spawn self.pos)))
@@ -420,7 +431,8 @@
                         shop-item.group)
       (set state.state.shop-row
            (icollect [ix si (ipairs state.state.shop-row)]
-             (when (not= index ix) si))))))
+             (when (not= index ix) si)))
+      (set state.state.team-dirty? true))))
 
 (λ Director.update [self dt]
   (set state.state.time
@@ -447,22 +459,22 @@
   (set state.state.team-state [])
   (each [_ unit (pairs state.state.teams.player)]
     (table.insert state.state.team-state
-                  (lume.merge unit.unit {:hp (. data.unit-types unit.unit.type :hp)}))))
+                  (lume.merge unit.unit
+                              {:hp (. data.unit-types unit.unit.type :hp)}))))
 
 (λ Director.restore-unit-state [self]
-  (when state.state.team-state
     (each [_ unit (pairs state.state.team-state)]
       (tiny.addEntity ecs.world
                       (new-entity Unit
                                   {:pos (/ arena-size 2)
-                                   : unit})))))
+                                   : unit}))))
 
 (λ Director.play-win-level-sequence [self]
   (local spin-in
          {:z-index 20000
           :t 0
           :id (get-id)
-          :arena-draw
+          :arena-draw-fg
           (fn [self]
             (love.graphics.push)
             (love.graphics.translate (/ arena-size.x 2)
@@ -560,7 +572,7 @@
          {:z-index 20000
           :t 0.75
           :id (get-id)
-          :arena-draw
+          :arena-draw-fg
           (fn [self]
             (love.graphics.push)
             (love.graphics.translate (/ arena-size.x 2)
@@ -574,6 +586,7 @@
   (timeline.tween 1 spin-in {:t 1} :outQuad)
   (while (not (input.mouse-released?))
     (coroutine.yield))
+  (set state.state.started true)
   (set spin-in.dead true))
   
 
@@ -582,7 +595,7 @@
          {:z-index 20000
           :t 0
           :id (get-id)
-          :arena-draw
+          :arena-draw-fg
           (fn [self]
             (love.graphics.push)
             (love.graphics.translate (/ arena-size.x 2)

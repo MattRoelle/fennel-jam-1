@@ -16,6 +16,7 @@
 (local Projectile (require :projectile))
 (local effects (require :effects))
 (local palette (require :palette))
+(local aseprite (require :aseprite))
 
 (local Unit {})
 (set Unit.__index Unit)
@@ -37,7 +38,7 @@
        (fire-timeline
         (set self.scale (vec 1.3 1.3))
         (set self.flashing true)
-        (timeline.tween 0.3 self {:scale (vec 1 1)} :outQuad)
+        (timeline.tween 0.2 self {:scale (vec 1 1)} :outQuad)
         (set self.flashing false)
         (set self.scale (vec 1 1)))))
 
@@ -103,6 +104,38 @@
      (state.state.director:muzzle-flash (vec x y) 2.5))
    (set self.dead true)))
 
+(λ Unit.update-eyes [self]
+  (match self.eye-state
+    :blinking
+    (when (> self.timers.blink.t 0.1)
+      (set self.timers.blink.t 0)
+      (set self.eye-state :normal))
+    _
+    (when (> self.timers.blink.t 2)
+      (set self.timers.blink.t 0)
+      (set self.eye-state :blinking))))
+
+(λ Unit.draw-eyes [self]
+  (let [a1 (- self.eye-gap)
+        a2 (+ self.eye-gap)
+        e1 (+ (polar-vec2 a1 self.eye-dist))
+        e2 (+ (polar-vec2 a2 self.eye-dist))]
+    (if self.flashing
+        (do
+          (graphics.image aseprite.flash-eye e1)
+          (graphics.image aseprite.flash-eye e2))
+        (match self.eye-state
+          :blinking
+          (do
+            (graphics.rectangle (- e1 (vec 2 2)) (vec 2 5) (hexcolor :000000ff))
+            (graphics.rectangle (- e2 (vec 2 2)) (vec 2 5) (hexcolor :000000ff)))
+          _
+          (do
+            (graphics.circle e1 self.eye-size (hexcolor :f1f1f1ff))
+            (graphics.circle e2 self.eye-size (hexcolor :f1f1f1ff))
+            (graphics.circle e1 2 (hexcolor :000000ff))
+            (graphics.circle e2 2 (hexcolor :000000ff)))))))
+
 (λ Unit.arena-draw [self]
   (let [(x y) (self.box2d.body:getPosition)
         a (self.box2d.body:getAngle)
@@ -117,15 +150,7 @@
     (love.graphics.scale self.scale.x self.scale.y)
     (graphics.circle (vec 0 0) 3 (hexcolor :f10000ff))
     (self.box2d:draw-local-points c)
-    (let [a1 (- self.eye-gap)
-          a2 (+ self.eye-gap)
-          e1 (+ (polar-vec2 a1 self.eye-dist))
-          e2 (+ (polar-vec2 a2 self.eye-dist))]
-      (graphics.circle e1 self.eye-size (hexcolor :f1f1f1ff))
-      (graphics.circle e2 self.eye-size (hexcolor :f1f1f1ff))
-      (when (not self.flashing)
-        (graphics.circle e1 2 (hexcolor :000000ff))
-        (graphics.circle e2 2 (hexcolor :000000ff))))
+    (self:draw-eyes)
     (love.graphics.pop)))
 
 (λ Unit.random-update [self dt]
@@ -139,6 +164,7 @@
 (λ Unit.fire-projectile [self direction]
   (let [(x y) (self.box2d.body:getPosition)
         pos (+ (vec x y) (* (direction:normalize) 10))]
+    (self.box2d.body:setAngle (direction:angle))
     (state.state.director:muzzle-flash pos)
     (tiny.addEntity ecs.world
                     (new-entity Projectile
@@ -205,6 +231,7 @@
         p (vec x y)
         angle (p:angle-to ep)
         iv (polar-vec2 angle (or self.bump-force 64))]
+    (self.box2d.body:setAngle (iv:angle))
     (self.box2d.body:applyLinearImpulse iv.x iv.y)))
 
 (λ Unit.bump-update [self dt]
@@ -216,6 +243,17 @@
       (when e
         (self:bump-enemy e)))))
 
+(λ Unit.enemy-ai-update [self dt]
+  (when (or (not self.target) self.target.dead)
+    (let [target-team (if (= :player self.team) :enemy :player)
+          e-id (lume.randomchoice (lume.keys (. state.state.teams target-team)))
+          e (. state.state.teams target-team e-id)]
+      (set self.target e)))
+  (when (and (> self.timers.move-tick.t (or self.def.bump-timer 1.75)))
+    (set self.timers.move-tick.t 0)
+    (when self.target
+      (self:bump-enemy self.target))))
+
 (λ Unit.look-velocity-dir [self dt]
   (let [(vx vy) (self.box2d.body:getLinearVelocity)
         a (math.atan2 vy vx)
@@ -226,16 +264,18 @@
     ; (self.box2d.body:applyAngularImpulse (* -64 dt da)))))
 
 (λ Unit.update [self dt]
+  (self:update-eyes dt)
   (let [angle (self.box2d.body:getAngle)
         f (* dt 1000)]
     (self.box2d.body:applyForce (* f (math.cos angle))
                                 (* f (math.sin angle))))
   (when (<= self.unit.hp 0)
     (set self.dead true))
-  (self:look-velocity-dir dt)
+  ;;(self:look-velocity-dir dt)
   (if (and self.targpos (= :shop state.state.phase))
     (self.box2d.body:setPosition self.targpos.x self.targpos.y)
     (match (or self.def.ai-type :bump)
+      :basic (self:enemy-ai-update dt)
       :bump (self:bump-update dt)
       :shoot (self:shoot-update dt)
       :random-shoot (self:shoot-update dt))))
@@ -245,7 +285,8 @@
       :__timers
       {:spawn {:t 0 :active true}
        :move-tick {:t 0 :active true :random true}
-       :shoot-tick {:t 0 :active true :random true}}
+       :shoot-tick {:t 0 :active true :random true}
+       :blink {:t 0 :active true :random true}}
       :pos (vec 32 32)
       :team :player})
 

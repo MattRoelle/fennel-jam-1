@@ -23,11 +23,13 @@
  ;; tier 2
  ;; :shotgunner {:ai-type :shoot :hp 15 :bump-damage 3 :tier 2}
  ;; :pulse {:ai-type :bump :hp 15 :bump-damage 3 :linear-damping 0 :tier 2}}
- :enemy-types {:basic {:hp 20
-                       :shape-type :circle
-                       :radius [9 14]
-                       :bump-damage 2
-                       :ai-type :bump}}
+ :enemy-types
+ {:basic {:hp 20
+          :shape-type :circle
+          :radius [9 14]
+          :bump-force 128
+          :bump-damage 2
+          :ai-type :bump}}
  :levels
  [{:type :combat
    :group-options [[:basic] [:basic :basic :basic]]

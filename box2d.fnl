@@ -7,9 +7,6 @@
 (local Box2dEntity {})
 (set Box2dEntity.__index Box2dEntity)
 
-(λ Box2dEntity.arena-draw [self]
-  (self:draw-world-points))
-
 (λ Box2dEntity.create-body [self]
   (set self.body (love.physics.newBody
                   state.pworld

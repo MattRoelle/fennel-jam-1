@@ -3,5 +3,6 @@
 :warn (let [img (love.graphics.newImage "assets/export-warn.png")] (img:setFilter :nearest :nearest) {: img :width (img:getWidth) :height (img:getHeight)}) 
 :arena-bg (let [img (love.graphics.newImage "assets/export-arena-bg.png")] (img:setFilter :nearest :nearest) {: img :width (img:getWidth) :height (img:getHeight)}) 
 :bgpat (let [img (love.graphics.newImage "assets/export-bgpat.png")] (img:setFilter :nearest :nearest) {: img :width (img:getWidth) :height (img:getHeight)}) 
+:flash-eye (let [img (love.graphics.newImage "assets/export-flash-eye.png")] (img:setFilter :nearest :nearest) {: img :width (img:getWidth) :height (img:getHeight)}) 
 :spawn (let [img (love.graphics.newImage "assets/export-spawn.png")] (img:setFilter :nearest :nearest) {: img :width (img:getWidth) :height (img:getHeight)}) 
 }
