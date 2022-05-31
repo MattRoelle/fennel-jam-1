@@ -216,14 +216,21 @@
     (let [iv (polar-vec2 (* (math.random) 2 math.pi) 16)]
       (self.box2d.body:applyLinearImpulse iv.x iv.y))))
 
+(λ Unit.get-random-target [self]
+  (let [target-team (if (= :player self.team) :enemy :player)
+        targ-team  (lume.keys (. state.state.teams target-team))
+        e-id (if (> (length targ-team) 0)
+                 (lume.randomchoice targ-team)
+                 nil)]
+    (when e-id (. state.state.teams target-team e-id))))
+
 (λ Unit.shoot-update [self dt]
   (when (> self.timers.shoot-tick.t (or self.def.fire-rate 2))
     (set self.timers.shoot-tick.t 0)
     (when (> state.state.enemy-count 0)
       (if (= :random-shoot self.def.ai-type)
           (self:fire-projectile (polar-vec2 (* 2 math.pi (math.random)) 1))
-          (let [e-id (lume.randomchoice (lume.keys state.state.teams.enemy))
-                e (. state.state.teams.enemy e-id)]
+          (let [e (self:get-random-target)]
             (when e
               (self:shoot-enemy e)))))))
 
@@ -247,17 +254,13 @@
 (λ Unit.bump-update [self dt]
   (when (and (> self.timers.move-tick.t (or self.def.bump-timer 1.75)))
     (set self.timers.move-tick.t 0)
-    (let [target-team (if (= :player self.team) :enemy :player)
-          e-id (lume.randomchoice (lume.keys (. state.state.teams target-team)))
-          e (. state.state.teams target-team e-id)]
+    (let [e (self:get-random-target)]
       (when e
         (self:bump-enemy e)))))
 
 (λ Unit.enemy-ai-update [self dt]
   (when (or (not self.target) self.target.dead)
-    (let [target-team (if (= :player self.team) :enemy :player)
-          e-id (lume.randomchoice (lume.keys (. state.state.teams target-team)))
-          e (. state.state.teams target-team e-id)]
+    (let [e (self:get-random-target)]
       (set self.target e)))
   (when (and (> self.timers.move-tick.t (or self.def.bump-timer 1.75)))
     (set self.timers.move-tick.t 0)

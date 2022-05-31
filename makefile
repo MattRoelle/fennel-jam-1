@@ -8,6 +8,7 @@ DESCRIPTION="Minimal setup for trying out Phil Hagelberg's fennel/love game desi
 GITHUB_USERNAME := $(shell grep GITHUB_USERNAME credentials.private | cut -d= -f2)
 GITHUB_PAT := $(shell grep GITHUB_PAT credentials.private | cut -d= -f2)
 LIBS := $(wildcard lib/*)
+ASSETS := $(wildcard assets/*)
 LUA := $(wildcard *.lua)
 SRC := $(wildcard *.fnl)
 
@@ -19,7 +20,7 @@ clean: ; rm -rf releases/*
 
 LOVEFILE=releases/$(NAME)-$(VERSION).love
 
-$(LOVEFILE): $(LUA) $(SRC) $(LIBS)
+$(LOVEFILE): $(LUA) $(SRC) $(LIBS) $(ASSETS)
 	mkdir -p releases/
 	find $^ -type f | LC_ALL=C sort | env TZ=UTC zip -r -q -9 -X $@ -@
 

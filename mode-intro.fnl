@@ -14,7 +14,7 @@
 
 (local {: stage-size : center-stage : arena-margin : arena-offset : arena-size} (require :constants))
 
-(local moonshine (require :moonshine))
+;(local moonshine (require :moonshine))
 
 (state.reset-state)
 (ecs.reset-ecs)
@@ -124,8 +124,8 @@
 (arena-canvas-fg:setFilter :nearest :nearest)
 (arena-canvas-entities:setFilter :nearest :nearest)
 
-(local arena-moonshine (moonshine arena-size.x arena-size.y moonshine.effects.dmg))
-(set arena-moonshine.dmg.palette "default")
+;(local arena-moonshine (moonshine arena-size.x arena-size.y moonshine.effects.dmg))
+;(set arena-moonshine.dmg.palette "default")
 ;(set arena-moonshine.posterize.num_bands 16)
 ;(arena-moonshine.chain moonshine.effects.dmg)
 
@@ -169,11 +169,11 @@ vec4 effect(vec4 color, Image tex, vec2 texture_coords, vec2 screen_coords)
     vec4 downleft = Texel(tex, texture_coords+vec2(-res,res));
 
     if (texturecolor.a > threshold && (up.a < threshold || right.a < threshold || upright.a < threshold)) {
-      return texturecolor * 2;
+      return texturecolor * 2.0;
     }
 
     if (texturecolor.a < threshold && (up.a > threshold || right.a > threshold || upright.a > threshold)) {
-      return vec4(0.0f/255.0f,0.0/255.0f,0.0/255.0f,1);
+      return vec4(0.0/255.0,0.0/255.0,0.0/255.0,1);
     }
 
       return texturecolor * color;
