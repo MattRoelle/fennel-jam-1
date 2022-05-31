@@ -76,6 +76,30 @@
     (love.graphics.pop)
     bstate))
 
+(λ unit-display [?state context props]
+  (assert props.unit "Must pass unit")
+  (let [bstate (or ?state {:hover false})
+        (mouse-down? hovering?) (mouse-interaction context)]
+    (set bstate.hover hovering?)
+    (when (and hovering? mouse-down?)
+      (state.state.director:sell-unit props.unit))
+    (when hovering?
+      (set state.state.hover-unit
+           {:unit-type props.unit.type
+            :t (+ state.state.time 0.05)
+            :level props.unit.level}))
+    (graphics.rectangle context.position context.size
+                        (if bstate.hover
+                            (rgba 0.4 0.4 0.4 1)
+                            (rgba 0.2 0.2 0.2 1)))
+    (set props.unit.hovering hovering?)
+    (let [r (get-layout-rect context)]
+      (graphics.print-centered
+        (if hovering?
+           "SELL"
+           (.. "Lv. " props.unit.level " " props.unit.type))
+        assets.f16 r.center
+        (rgba 1 1 1 1)))))
 
 (λ shop-button [?state context props]
   "An immediate mode button"
@@ -86,7 +110,10 @@
         (mouse-down? hovering?) (mouse-interaction context)]
     (set bstate.hover hovering?)
     (when hovering?
-      (set bstate.hover-t (+ state.state.time 0.1))
+      (set state.state.hover-unit
+           {:unit-type (. state.state.shop-row props.index :unit-type)
+            :t (+ state.state.time 0.05)
+            :level 1})
       (set state.state.hover-shop-btn bstate))
     (when (and hovering? mouse-down?)
       (state.state.director:purchase props.index))
@@ -113,4 +140,5 @@
  : image
  : view
  : shop-button
+ : unit-display
  : button}

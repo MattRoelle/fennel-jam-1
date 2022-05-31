@@ -151,7 +151,10 @@
     (graphics.circle (vec 0 0) 3 (hexcolor :f10000ff))
     (self.box2d:draw-local-points c)
     (self:draw-eyes)
-    (love.graphics.pop)))
+    (love.graphics.pop)
+    (when (and (= :shop state.state.phase)
+               self.unit.hovering)
+      (graphics.stroke-circle (vec x y) 32 4 (rgba 1 1 1 1)))))
 
 (λ Unit.random-update [self dt]
   (when (> 0.02 (math.random))
@@ -160,6 +163,10 @@
 
 (λ Unit.get-wobble [self]
   (- 0.3 (* 0.6 (math.random))))
+
+(λ Unit.get-pos [self]
+  (let [(x y) (self.box2d.body:getPosition)]
+    (vec x y)))
 
 (λ Unit.fire-projectile [self direction]
   (let [(x y) (self.box2d.body:getPosition)

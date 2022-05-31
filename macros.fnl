@@ -6,8 +6,9 @@
      timeline#))
 
 (λ imm-stateful [f state-host keys props ?children]
-  `[#(tset ,state-host (unpack ,keys)
-           (,f (. ,state-host (unpack ,keys)) $...))
+  `[#(do (tset ,state-host (unpack ,keys)
+               (,f (. ,state-host (unpack ,keys)) $...))
+         {:size ,props.size})
     ,props ,?children])
 
 ;; not working....

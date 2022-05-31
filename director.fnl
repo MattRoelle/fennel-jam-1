@@ -13,7 +13,7 @@
 (local state (require :state))
 (local {: layout : get-layout-rect} (require :imgui))
 (local aabb (require :aabb))
-(local {: text : view : image : shop-button : button} (require :imm))
+(local {: text : view : image : shop-button : button : unit-display} (require :imm))
 (local {: stage-size : center-stage : arena-margin : arena-offset : arena-size} (require :constants))
 (local {: new-entity : get-mouse-position} (require :helpers))
 (local {: Unit} (require :unit))
@@ -52,15 +52,18 @@
 
 (λ tooltip []
   [view {:display :absolute}
-   [(when (> (or (?. state.state :hover-shop-btn :hover-t) 0) state.state.time)
-      (let [sz (vec 400 200)]
-        [view {:display :flex
-               :position (- center-stage (/ sz 2))
-               :size sz
-               :color (rgba 0 0 0 1)
-               :padding (vec 4 4)}
-         [[text {:text (get-copy-str :en :units state.state.hover-shop-btn.type)
-                 :color (rgba 1 1 1 1)}]]]))]])
+    (let [unit-type
+          (if (> (or (?. state.state :hover-unit :t) 0) state.state.time)
+              state.state.hover-unit.unit-type)
+          sz (vec 400 80)]
+      (when unit-type 
+        (let [copy (get-copy-str :en :units unit-type)]
+          [[view {:display :flex
+                  :position (+ (vec 0 80) (- center-stage (/ sz 2)))
+                  :size sz
+                  :color (rgba 0 0 0 1)
+                  :padding (vec 4 4)}
+             [[text {:text copy :color (rgba 1 1 1 1)}]]]])))])
 
 (λ upgrade-list []
   [view {:display :stack
@@ -89,21 +92,9 @@
                   :display :stack
                   :padding (vec 0 2)
                   :direction :right}
-            [[view {:text unit.type
-                    :color (rgba 0.1 0.1 0.1 1)
-                    :display :flex
-                    :flex-direction :column
-                    :size (vec 90 32)}
-              [[text {:text unit.type
-                      :color (rgba 1 1 1 1)}]
-               [text {:text (.. "Lv." unit.level)
-                      :color (rgba 1 1 1 1)}]]]
-             (imm-stateful button unit [:bstate]
-                           {:label "SELL"
-                            :on-click
-                            (fn []
-                              (state.state.director:sell-unit unit))
-                            :size (vec 40 32)})]]))]])])
+            [(imm-stateful unit-display unit [:display]
+                           {: unit
+                            :size (vec (- arena-margin.x 10) 32)})]]))]])])
 
 (λ money-display []
   [view {:display :stack
@@ -366,11 +357,7 @@
 
 
 (λ Director.add-gold [self v]
-  (set state.state.money (+ state.state.money v))
-  (effects.screen-text-flash
-    (.. "+ " v)
-    (vec 32 370)
-    (rgba 1 1 0 1)))
+  (set state.state.money (+ state.state.money v)))
 
 (λ Director.spawn-enemy-group [self pos group]
   (fire-timeline
@@ -401,8 +388,13 @@
   (set state.state.team-state
        (icollect [_ b (ipairs state.state.team-state)]
          (when (not= b.id unit.id) b)))
-  (tset (state.get-entity-by-id unit.entity-id) :dead true)
-  (self:add-gold unit.level))
+  (self:add-gold unit.level)
+  (let [ent (state.get-entity-by-id unit.entity-id)]
+    (set ent.dead true)
+    (effects.text-flash
+      (.. "+ " unit.level)
+      (ent:get-pos)
+      (rgba 1 1 0 1))))
 
 (λ Director.purchase [self index]
   (let [shop-item (. state.state.shop-row index)]
@@ -417,8 +409,8 @@
             ent (tiny.addEntity ecs.world
                                 (new-entity Unit {:pos (/ arena-size 2)
                                                   : unit}))]
-        (table.insert state.state.team-state
-                      (lume.merge ent.unit {:entity-id ent.id})))
+        (set unit.entity-id ent.id)
+        (table.insert state.state.team-state unit))
       (set state.state.shop-row
            (icollect [ix si (ipairs state.state.shop-row)]
              (when (not= index ix) si))))))
