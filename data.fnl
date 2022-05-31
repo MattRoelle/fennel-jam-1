@@ -8,13 +8,16 @@
             :shape-type :circle
             :radius 16
             :mass 5
-            :bump-force 128
+            :bump-force 256
             :bump-timer 2}
   :shooter {:tier 1
             :ai-type :shoot
             :classes [:shooter]
             :points [-10 0 -10 -10 0 -10 10 0 10 10 0 10]
             :hp 15
+            :linear-damping 0.001
+            :range 0.7
+            :fire-speed 50
             :bump-damage 3
             :fire-rate 2.5}}
  ;; tier 2

@@ -136,25 +136,26 @@
 (λ Unit.get-wobble [self]
   (- 0.3 (* 0.6 (math.random))))
 
+(λ Unit.fire-projectile [self direction]
+  (let [(x y) (self.box2d.body:getPosition)
+        pos (+ (vec x y) (* (direction:normalize) 10))]
+    (state.state.director:muzzle-flash pos)
+    (tiny.addEntity ecs.world
+                    (new-entity Projectile
+                                {: pos
+                                 :speed (or self.def.fire-speed 50)
+                                 :range (or self.def.range 0.3)
+                                 : direction}))))
+
 (λ Unit.shoot-enemy [self e]
-  (for [i 1 (match self.unit.type :shotgunner 5 _ 1)]
-    (let [(ex ey) (e.box2d.body:getPosition)
-          ep (vec ex ey)
-          (x y) (self.box2d.body:getPosition)
-          p (vec x y)
-          angle (p:angle-to ep)
-          wobble (self:get-wobble)
-          iv
-          (match self.unit.type
-            :shotgunner (polar-vec2
-                         (+ angle (* (- i 2) 0.2))
-                         2 (+ (* (math.random) 1)))
-            _ (polar-vec2 (+ angle wobble) 3))]
-      (state.state.director:muzzle-flash (vec x y))
-      (tiny.addEntity ecs.world
-                      (new-entity Projectile
-                                  {:pos (vec x y)
-                                   :direction iv})))))
+  (let [(ex ey) (e.box2d.body:getPosition)
+        ep (vec ex ey)
+        (x y) (self.box2d.body:getPosition)
+        p (vec x y)
+        angle (p:angle-to ep)
+        wobble (self:get-wobble)
+        iv (polar-vec2 (+ angle wobble) 3)]
+    (self:fire-projectile iv)))
 
 (λ Unit.get-enemies-in-range [self r]
   (let [(x y) (self.box2d.body:getPosition)]
@@ -173,19 +174,22 @@
           (when e
             (self:shoot-enemy e)))))))
 
-(λ Unit.shoot-update [self dt]
+(λ Unit.random-move-update [self dt]
   (when (> self.timers.move-tick.t 2)
     (set self.timers.move-tick.t 0)
     (let [iv (polar-vec2 (* (math.random) 2 math.pi) 16)]
-      (self.box2d.body:applyLinearImpulse iv.x iv.y)))
+      (self.box2d.body:applyLinearImpulse iv.x iv.y))))
+
+(λ Unit.shoot-update [self dt]
   (when (> self.timers.shoot-tick.t (or self.def.fire-rate 2))
     (set self.timers.shoot-tick.t 0)
     (when (> state.state.enemy-count 0)
-      (let [e-id (lume.randomchoice (lume.keys state.state.teams.enemy))
-            e (. state.state.teams.enemy e-id)]
-        (print :shooting e-id e)
-        (when e
-          (self:shoot-enemy e))))))
+      (if (= :random-shoot self.def.ai-type)
+          (self:fire-projectile (polar-vec2 (* 2 math.pi (math.random)) 1))
+          (let [e-id (lume.randomchoice (lume.keys state.state.teams.enemy))
+                e (. state.state.teams.enemy e-id)]
+            (when e
+              (self:shoot-enemy e)))))))
 
 (λ Unit.destroy [self]
   (effects.box2d-explode (self:get-body-pos) 5 4 (rgba 1 1 1 1))
@@ -233,7 +237,8 @@
     (self.box2d.body:setPosition self.targpos.x self.targpos.y)
     (match (or self.def.ai-type :bump)
       :bump (self:bump-update dt)
-      :shoot (self:shoot-update dt))))
+      :shoot (self:shoot-update dt)
+      :random-shoot (self:shoot-update dt))))
 
 (set Unit.__defaults
      {:z-index 10

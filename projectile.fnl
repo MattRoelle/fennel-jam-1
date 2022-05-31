@@ -15,7 +15,7 @@
 (set Projectile.__index Projectile)
 
 (λ Projectile.update [self dt]
-  (when (> self.timers.spawn.t 1)
+  (when (> self.timers.spawn.t self.range)
     (set self.dead true)))
 
 (λ Projectile.init [self]
@@ -34,7 +34,7 @@
                                 :category "00000100"
                                 :mask "10000010"}))
   (self.box2d:init self.id)
-  (let [iv (* self.direction 40)]
+  (let [iv (* self.direction self.speed)]
     (self.box2d.body:applyLinearImpulse iv.x iv.y)))
 
 (λ Projectile.arena-draw [self]

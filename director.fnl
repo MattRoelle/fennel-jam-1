@@ -137,17 +137,24 @@
 (local Director {})
 (set Director.__index Director)
 
-(λ Director.attack-bump [self ea eb]
+(λ Director.attack-bump [self ea eb col]
   (self:screen-shake)
-  (ea:take-dmg eb.def.bump-damage)
-  (eb:take-dmg ea.def.bump-damage))
+  (let [(nx ny) (col:getNormal)
+        angle (math.atan2 ny nx)
+        cos (math.cos angle)
+        sin (math.sin angle)
+        f 1000000]
+    (ea:take-dmg eb.def.bump-damage)
+    (eb:take-dmg ea.def.bump-damage)
+    (ea.box2d.body:applyLinearImpulse (* f cos) (* f sin))
+    (ea.box2d.body:applyLinearImpulse (* (- f) cos) (* (- f) sin))))
 
 (λ Director.bullet-hit [self bullet target]
   (target:take-dmg bullet.bullet.dmg)
   (self:screen-shake)
   (set bullet.dead true))
 
-(λ Director.process-collision [self ea eb]
+(λ Director.process-collision [self ea eb col]
   (let [(collision-type A B)
         (if (and ea.bullet (= eb.team :enemy))
             (values :player-bullet-to-enemy ea eb)
@@ -163,7 +170,7 @@
             (values :bullet-wall eb nil))]
     (match collision-type
       :bullet-wall (set A.dead true)
-      :bump-player-enemy (self:attack-bump A B)
+      :bump-player-enemy (self:attack-bump A B col)
       :player-bullet-to-enemy (self:bullet-hit A B))))
 
 ;; box2d collision callbacks
@@ -171,7 +178,7 @@
   (let [ea (state.get-entity-by-id (a:getUserData))
         eb (state.get-entity-by-id (b:getUserData))]
     (when (and ea eb)
-      (self:process-collision ea eb))))
+      (self:process-collision ea eb col))))
 
 (λ Director.end-contact [self a b col])
 (λ Director.pre-solve [self a b col])
@@ -251,41 +258,36 @@
   ;; Add walls
   (set self.bottom-wall
     (new-entity Box2dRectangle
-                {:pos (vec (/ arena-size.x 2) arena-size.y)
-                 :size (vec arena-size.x 10)
+                {:pos (vec (/ arena-size.x 2) (* 1.25 arena-size.y))
+                 :shrink-position (vec (/ arena-size.x 2) (* 1 arena-size.y))
+                 :size (vec arena-size.x (* arena-size.y 0.6))
                  :wall true
                  :category "10000000"
                  :mask "11111111"}))
 
   (set self.top-wall
     (new-entity Box2dRectangle
-                {:pos (vec (/ arena-size.x 2) 0)
-                 :size (vec arena-size.x 10)
+                {:pos (vec (/ arena-size.x 2) (* -0.25 arena-size.y))
+                 :shrink-position (vec (/ arena-size.x 2) (* 0 arena-size.y))
+                 :size (vec arena-size.x (* arena-size.y 0.6))
                  :wall true
                  :category "10000000"
                  :mask "11111111"}))
 
   (set self.left-wall
     (new-entity Box2dRectangle
-                {:pos (vec 0 (/ arena-size.y 2))
-                 :size (vec 10 arena-size.y)
+                {:pos (vec (* arena-size.x -0.27) (/ arena-size.y 2))
+                 :shrink-position (vec (* arena-size.x 0) (/ arena-size.y 2))
+                 :size (vec (* arena-size.x 0.6) arena-size.y)
                  :wall true
                  :category "10000000"
                  :mask "11111111"}))
 
   (set self.right-wall
     (new-entity Box2dRectangle
-                {:pos (vec arena-size.x (/ arena-size.y 2))
-                 :size (vec 10 arena-size.y)
-                 :wall true
-                 :category "10000000"
-                 :mask "11111111"}))
-
-  (set self.divider
-    (new-entity Box2dRectangle
-                {:center-pos (vec (/ arena-size.x 4) (/ arena-size.y 2))
-                 :pos (self.right-wall.pos:clone)
-                 :size (vec 10 arena-size.y)
+                {:pos (vec (* arena-size.x 1.27) (/ arena-size.y 2))
+                 :shrink-position (vec (* arena-size.x 1) (/ arena-size.y 2))
+                 :size (vec (* arena-size.x 0.6) arena-size.y)
                  :wall true
                  :category "10000000"
                  :mask "11111111"}))
@@ -294,8 +296,7 @@
             self.bottom-wall
             self.top-wall
             self.left-wall
-            self.right-wall
-            self.divider))
+            self.right-wall))
 
 (λ Director.draw [self]
    (layout #nil {:size stage-size} 
@@ -506,6 +507,28 @@
               (/ arena-size.y 2))
          grp)))))
 
+(λ Director.start-walls [self]
+  (set self.wall-timelines [])
+  (each [_ k (ipairs [:top-wall :left-wall :bottom-wall :right-wall])]
+    (let [wall (. self k)]
+      (set wall.targpos (wall.pos:clone))
+      (table.insert self.wall-timelines
+                    (fire-timeline
+                     (timeline.tween 10 wall {:targpos wall.shrink-position}))))))
+
+(λ Director.reset-walls [self]
+  (when self.wall-timelines
+    (each [_ tl (ipairs self.wall-timelines)]
+      (tl:cancel)))
+  (each [_ k (ipairs [:top-wall :left-wall :bottom-wall :right-wall])]
+    (let [wall (. self k)
+          (x y) (wall.body:getPosition)]
+      (set wall.targpos (vec x y))
+      (table.insert self.wall-timelines
+                    (fire-timeline
+                     (timeline.tween 2 wall {:targpos wall.pos} :outQuad))))))
+
+
 (λ Director.main-timeline [self]
  (self:setup-arena-entities)
 
@@ -525,6 +548,7 @@
          (self:save-unit-state)
          (self:pre-combat-animation)
          (self:spawn-enemies group-options waves)
+         (self:start-walls)
          (timeline.wait 1.5)
          (while (> state.state.enemy-count 0)
            (coroutine.yield))
@@ -534,6 +558,8 @@
          (self:open-upgrade-screen)
          (while state.state.upgrade-screen-open?
            (coroutine.yield))))
+
+     (self:reset-walls)
 
      (when (and (not state.state.game-over?)
                 (= :combat level-def.type))
