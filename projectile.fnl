@@ -14,7 +14,7 @@
 (local Projectile {})
 (set Projectile.__index Projectile)
 
-(λ Projectile.update [self dt]
+(λ Projectile.time-update [self dt]
   (when (> self.timers.spawn.t self.range)
     (set self.dead true)))
 

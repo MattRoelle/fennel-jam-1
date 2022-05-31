@@ -276,7 +276,7 @@
     ;(when (> (+ (* vx vx) (* vy vy)) 0.1)
     ; (self.box2d.body:applyAngularImpulse (* -64 dt da)))))
 
-(λ Unit.update [self dt]
+(λ Unit.time-update [self dt]
   (self:update-eyes dt)
   (let [angle (self.box2d.body:getAngle)
         f (* dt 1000)]
@@ -285,7 +285,7 @@
   (when (<= self.unit.hp 0)
     (set self.dead true))
   ;;(self:look-velocity-dir dt)
-  (if (and self.targpos (= :shop state.state.phase))
+  (if self.targpos
     (self.box2d.body:setPosition self.targpos.x self.targpos.y)
     (match (or self.def.ai-type :bump)
       :basic (self:enemy-ai-update dt)

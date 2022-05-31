@@ -17,6 +17,7 @@
 (local {: stage-size : center-stage : arena-margin : arena-offset : arena-size} (require :constants))
 (local {: new-entity : get-mouse-position} (require :helpers))
 (local {: Unit} (require :unit))
+(local {: Referee} (require :referee))
 (local data (require :data))
 (local aseprite (require :aseprite))
 (local {: get-copy-str} (require :copy))
@@ -165,6 +166,7 @@
         cos (math.cos angle)
         sin (math.sin angle)
         f 1000000]
+    (self:brief-pause)
     (ea:take-dmg eb.def.bump-damage)
     (eb:take-dmg ea.def.bump-damage)
     (ea.box2d.body:applyLinearImpulse (* f cos) (* f sin))
@@ -173,6 +175,7 @@
 (λ Director.bullet-hit [self bullet target]
   (target:take-dmg bullet.bullet.dmg)
   (self:screen-shake)
+  (self:brief-pause)
   (set bullet.dead true))
 
 (λ Director.process-collision [self ea eb col]
@@ -446,11 +449,22 @@
            (icollect [ix si (ipairs state.state.shop-row)]
              (when (not= index ix) si))))))
 
+(λ Director.brief-pause [self]
+  (when self.pause-timeline
+    (self.pause-timeline:cancel))
+  (set self.pause-timeline
+       (fire-timeline
+        (set state.state.time-scale 0)
+        (timeline.wait 0.075)
+        (set state.state.time-scale 1))))
+
+(λ Director.time-update [self dt]
+  (state.state.pworld:update dt))
+
 (λ Director.update [self dt]
   (set state.state.time
        (+ state.state.time dt))
   (input:update)
-  (state.state.pworld:update dt)
   ;; (when (and state.state.active-shop-btn
   ;;            (input:mouse-released?)
   ;;            (: (aabb (vec 0 0) arena-size) :contains-point?
@@ -474,7 +488,9 @@
                               (new-entity Unit
                                           {:pos (/ arena-size 2)
                                            : unit}))]
-      (set unit.entity-id ent.id))))
+      (set unit.entity-id ent.id)))
+  (self:muzzle-flash (/ arena-size 2) 2)
+  (self:screen-shake))
 
 (λ Director.play-win-level-sequence [self]
   (local spin-in
@@ -512,24 +528,23 @@
 (λ text-flash [s pos color ?font])
 
 (λ Director.line-up-units [self]
-  (var unit-index 1)
-  (each [k grp (pairs state.state.units)]
-    (let [ctx {: unit-index
-               :count 0
-               :pos (vec 32 (+ 16 (* (- unit-index 1) 34)))}]
-      (set unit-index (+ unit-index 1))
-      (each [id e (pairs grp)]
-        (when (= :table (type e))
-          (set e.targpos (e:get-body-pos))
-          (let [c ctx.count]
-            (fire-timeline
-             (timeline.tween 1 e {:targpos (+ ctx.pos (* c (vec 30 0)))} :outQuad)))
-          (set ctx.count (+ ctx.count 1)))))))
+  (each [ix unit (ipairs state.state.team-state)]
+    (let [ent (state.get-entity-by-id unit.entity-id)]
+      (set ent.targpos (ent:get-body-pos))
+      (print :ent ent)
+      (fire-timeline
+       (let [x (% ix 4)
+             y (math.floor (/ ix 4))]
+         (timeline.tween 1 ent
+                         {:targpos (+ (vec 50 50)
+                                      (* 24 (vec x y)))}
+                         :outQuad))
+       (set ent.targpos nil))))
+  (timeline.wait 1))
 
 (λ Director.do-shop-phase [self]
   (set state.state.phase :shop)
   (self:roll-shop)
-  (self:line-up-units)
   (while (= :shop state.state.phase)
     (coroutine.yield)))
 
@@ -622,6 +637,9 @@
   (self.reset-game))
 
 (λ Director.main-timeline [self]
+  ;; TODO: SAUCE
+  ;; (set state.state.referee
+  ;;      (tiny.addEntity ecs.world (new-entity Referee)))
   (self:setup-arena-entities)
   (self:title-screen)
   ;; Main game loop
@@ -638,6 +656,7 @@
           (self:restore-unit-state)
           (self:do-shop-phase)
           (self:pre-combat-animation)
+          (self:line-up-units)
           (self:spawn-enemies group-options waves)
           (timeline.wait 2)
           (self:start-walls)

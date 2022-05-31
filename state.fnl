@@ -12,6 +12,7 @@
   (local initial-state
          {:screen-scale (vec 1 1)
           :screen-offset (vec 0 0)
+          :time-scale 1
           :team-state []
           :class-synergies {}
           :muzzle-flashes {}
@@ -20,7 +21,7 @@
           :phase :shop
           :display-level 1
           :level 1
-          :money 10
+          :money 100
           :enemy-count 0
           :upgrades {}
           :upgrade-choices {}

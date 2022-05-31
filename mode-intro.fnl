@@ -42,7 +42,7 @@
 (λ timers-system.process [self e dt]
   (each [_ v (pairs e.timers)]
     (when v.active
-      (set v.t (+ v.t dt)))))
+      (set v.t (+ v.t (* state.state.time-scale dt))))))
 
 (tiny.addSystem ecs.world timers-system)
 
@@ -70,6 +70,16 @@
   (e:update dt))
 
 (tiny.addSystem ecs.world update-system)
+
+;; time-update-system handles calling update on entities with a dt
+;; Can be scaled/paused etc
+(local time-update-system (tiny.processingSystem))
+(set time-update-system.filter (tiny.requireAll :time-update))
+
+(λ time-update-system.process [self e dt]
+  (e:time-update (* state.state.time-scale dt)))
+
+(tiny.addSystem ecs.world time-update-system)
 
 (local timeline-system (tiny.processingSystem))
 (set timeline-system.filter (tiny.requireAll :timeline))
