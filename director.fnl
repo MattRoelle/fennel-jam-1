@@ -77,6 +77,24 @@
               :text (.. k ": " (tostring v))
               :color (rgba 1 1 1 1)}])]]])
 
+(λ class-list []
+  [view {:display :stack
+         :position (vec 0 (/ arena-margin.y 2))
+         :size (vec arena-margin.x stage-size.y)
+         :padding (vec 4 4)}
+   (when (= :shop state.state.phase)
+     [[view {:color (rgba 0.5 0.3 0.3 0)
+             :display :stack
+             :direction :down}
+       (icollect [class-type n (pairs state.state.class-synergies)]
+         [view {:size (vec (- arena-margin.x 10) 40)
+                :display :flex}
+          [[view {:size (vec (- arena-margin.x 10) 32)
+                  :display :flex
+                  :color (rgba 0 0 0 1)}
+            [[text {:text (.. class-type " - " n)
+                    :color (rgba 1 1 1 1)}]]]]])]])])
+
 (λ unit-list []
   [view {:display :stack
          :position (vec (- stage-size.x arena-margin.x) (/ arena-margin.y 2))
@@ -343,6 +361,7 @@
                        :on-click #(self:buy-roll-shop)
                        :position (vec 20 350)})
         (upgrade-list)
+        (class-list)
         (unit-list)
         (money-display)
         (top-row)
@@ -394,7 +413,18 @@
     (effects.text-flash
       (.. "+ " unit.level)
       (ent:get-pos)
-      (rgba 1 1 0 1))))
+      (rgba 1 1 0 1)))
+  (self:calc-classes))
+
+(λ Director.calc-classes [self]
+  (set state.state.class-synergies
+       (accumulate [acc {} _ unit (ipairs state.state.team-state)]
+         (do
+           (each [_ class-type (ipairs (. data.unit-types unit.type :classes))]
+             (when (not (. acc class-type))
+               (tset acc class-type 0))
+             (tset acc class-type (+ 1 (. acc class-type))))
+           acc))))
 
 (λ Director.purchase [self index]
   (let [shop-item (. state.state.shop-row index)]
@@ -410,7 +440,8 @@
                                 (new-entity Unit {:pos (/ arena-size 2)
                                                   : unit}))]
         (set unit.entity-id ent.id)
-        (table.insert state.state.team-state unit))
+        (table.insert state.state.team-state unit)
+        (self:calc-classes))
       (set state.state.shop-row
            (icollect [ix si (ipairs state.state.shop-row)]
              (when (not= index ix) si))))))
