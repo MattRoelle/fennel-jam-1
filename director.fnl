@@ -112,17 +112,16 @@
          :position (vec 0 (/ arena-margin.y 2))
          :size (vec arena-margin.x stage-size.y)
          :padding (vec 4 4)}
-   (when (= :shop state.state.phase)
-     [[view {:color (rgba 0.5 0.3 0.3 0)
-             :display :stack
-             :direction :down}
-       (icollect [class-type info (pairs state.state.class-synergies)]
-         [view {:size (vec (- arena-margin.x 10) 54)
-                :display :flex}
-           [(imm-stateful class-display state.state.class-synergies [class-type]
-                          {: class-type
-                           :size (vec (- arena-margin.x 10) 44)
-                           :count info.count})]])]])])
+    [[view {:color (rgba 0.5 0.3 0.3 0)
+            :display :stack
+            :direction :down}
+      (icollect [class-type info (pairs state.state.class-synergies)]
+        [view {:size (vec (- arena-margin.x 10) 54)
+               :display :flex}
+          [(imm-stateful class-display state.state.class-synergies [class-type]
+                         {: class-type
+                          :size (vec (- arena-margin.x 10) 44)
+                          :count info.count})]])]]])
 
 (λ unit-list []
   [view {:display :stack
@@ -134,24 +133,25 @@
             :direction :down}
       (when (> state.state.unit-count 0)
         (icollect [ix unit (ipairs state.state.team-state)]
-          [view {:size (vec (- arena-margin.x 10) 44)
+          [view {:size (vec (- arena-margin.x 10) 45)
                  :display :stack
                  :padding (vec 0 2)
                  :direction :right}
            [(imm-stateful unit-display unit [:display]
                           {: unit
-                           :size (vec (- arena-margin.x 10) 32)})]]))]]])
+                           :size (vec (- arena-margin.x 10) 31)})]]))]]])
 
 (λ money-display []
   [view {:display :stack
          :direction :right
-         :position (vec 80 0)
+         :color (rgba 0 0 0 1)
+         :position (vec 132 5)
          :padding (vec 8 0)
-         :size (vec 200 30)}
+         :size (vec 100 30)}
    [(when state.state.started
       [text {:text (.. "$" (tostring state.state.money))
              :font assets.f32      
-             :color (rgba 0 0 0 1)}])]])
+             :color (rgba 1 1 1 1)}])]])
 
 (λ team-count-display []
   [view {:display :stack
@@ -358,7 +358,7 @@
        (table.insert state.state.shop-row
                        {:cost 3 :unit-type u :label u}))
      (self:clamp-shop)
-     (timeline.wait 0.2))))
+     (timeline.wait 0.05))))
 
 (λ Director.arena-draw [self]
   (when state.active-shop-btn

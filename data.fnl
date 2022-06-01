@@ -145,43 +145,10 @@
           :bump-force 128
           :ai-type :enemy}}
  :levels
- [{:type :upgrade}
-  {:type :upgrade}
-  {:type :upgrade}
-  {:type :upgrade}
-  {:type :combat
+ [{:type :combat
    :group-options [[:basic] [:basic :basic :basic]]
    :waves [{:groups 2}]}
-  {:type :upgrade}
   {:type :combat
    :group-options [[:basic :basic :basic :basic :basic :basic] [:basic :basic :basic]]
    :waves [{:groups 2} {:groups 3}]}
-  {:type :upgrade}
-  {:type :combat
-   :group-options [[:basic :basic :basic :basic] [:basic :basic :basic :basic :basic :basic :basic :basic]]
-   :waves [{:groups 3} {:groups 4}]}
-  {:type :combat
-   :group-options [[:basic :basic :basic :basic :basic] [:basic :basic :basic :basic :basic :basic :basic :basic] [:basic :basic]]
-   :waves [{:groups 4} {:groups 4} {:groups 4}]}
-  {:type :upgrade}
-  {:type :combat
-   :group-options [[:basic :basic :basic :basic :basic :basic :basic :basic
-                    :basic :basic :basic :basic
-                    :basic :basic :basic :basic :basic
-                    :basic :basic]]
-   :waves [{:groups 2}]}
-  {:type :upgrade}
-  {:type :combat
-   :group-options [[:basic :basic :basic :basic :basic :basic :basic :basic
-                    :basic :basic :basic :basic
-                    :basic :basic :basic :basic :basic
-                    :basic :basic]]
-   :waves [{:groups 2}]}
-  {:type :upgrade}
-  {:type :combat
-   :group-options [[:basic :basic :basic :basic :basic :basic :basic :basic
-                    :basic :basic :basic :basic
-                    :basic :basic :basic :basic :basic
-                    :basic :basic]]
-   :waves [{:groups 2}]}
   {:type :upgrade}]}

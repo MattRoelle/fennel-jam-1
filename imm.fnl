@@ -11,6 +11,7 @@
 (local assets (require :assets))
 (local timeline (require :timeline))
 (local data (require :data))
+(local arena-shader (require :arena-shader))
 
 (λ text [context props]
   "Basic text component"
@@ -66,14 +67,22 @@
     (set bstate.mouse-down? mouse-down?)
     (love.graphics.push)
     ;(love.graphics.scale bstate.scale bstate.scale)
+    (graphics.stroke-rectangle context.position context.size
+                               8 (if bstate.hover
+                                     (rgba 1 1 1 1)
+                                     (rgba 0 0 0 1))
+                               4)
     (graphics.rectangle context.position context.size
                         (if bstate.hover
-                            (rgba 0.4 0.4 0.4 1)
-                            (rgba 0.2 0.2 0.2 1)))
+                            (rgba 0 0 0 1)
+                            (rgba 1 1 1 1)) 4)
     (let [r (get-layout-rect context)]
-      (graphics.print-centered (or props.label "NA") assets.f16
-                               r.center
-                               (rgba 1 1 1 1)))
+      (graphics.print-centered
+       (or props.label "NA")
+       assets.f16 r.center
+       (if bstate.hover
+           (rgba 1 1 1 1)
+           (rgba 0 0 0 1))))
     (love.graphics.pop)
     bstate))
 
@@ -123,14 +132,14 @@
                         (if bstate.hover
                             (rgba 0 0 0 1)
                             (get-class-color (. data.unit-types props.unit.type :classes 1))))
-    (graphics.rectangle (+ context.position (vec 0 24))
+    (graphics.rectangle (+ context.position (vec 0 17))
                         (vec (/ context.size.x 2) 12)
                         (rgba 0 0 0 1))
-    (graphics.rectangle (+ context.position (vec (/ context.size.x 2) 24))
+    (graphics.rectangle (+ context.position (vec (/ context.size.x 2) 17))
                         (vec (/ context.size.x 2) 12)
                         (rgba 1 1 1 1))
     (when (> props.unit.hp 0)
-      (graphics.rectangle (+ context.position (vec 0 24))
+      (graphics.rectangle (+ context.position (vec 0 17))
                           (vec (* (/ context.size.x 2) (/ props.unit.hp props.unit.max-hp))
                                12)
                           (rgba 1 0 0 1)))
@@ -144,12 +153,16 @@
         (rgba 1 1 1 1))
       (graphics.print-centered
         (if (= 0 props.unit.hp) :DEAD props.unit.hp)
-        assets.f16 (+ r.center (vec -30 13))
+        assets.f16 (+ r.center (vec -30 8))
         (rgba 1 1 1 1))
       (graphics.print-centered
         props.unit.damage
-        assets.f16 (+ r.center (vec 30 13))
+        assets.f16 (+ r.center (vec 30 8))
         (rgba 0 0 0 1)))
+    (graphics.stroke-rectangle context.position context.size 4
+                               (rgba 0 0 0 1) 4)
+    (graphics.stroke-rectangle context.position context.size 2
+                               (rgba 1 1 1 1) 4)
     bstate))
 
 (λ shop-button [?state context props]
@@ -169,21 +182,34 @@
     (when (and hovering? mouse-down?)
       (state.state.director:purchase props.index))
     (set bstate.mouse-down? mouse-down?)
+    (graphics.stroke-rectangle context.position context.size
+                               8 (if bstate.hover
+                                     (rgba 1 1 1 1)
+                                     (rgba 0 0 0 1))
+                               4)
     (graphics.rectangle context.position context.size
-                        (if (= state.state.active-shop-btn bstate)
-                            (rgba 0.7 0.7 0.7 1)
-                            bstate.hover
-                            (rgba 0.4 0.4 0.4 1)
-                            (rgba 0.2 0.2 0.2 1)))
+                        (if bstate.hover
+                            (rgba 0 0 0 1)
+                            (rgba 1 1 1 1)) 4)
     (let [r (get-layout-rect context)]
       (graphics.print-centered (or props.label "NA") assets.f16
-                               (+ r.center (vec 0 -16))
-                               (rgba 1 1 1 1))
-      (graphics.print-centered
-       (.. "$" props.cost)
-       assets.f16
-       (+ r.center (vec 0 8))
-       (rgba 1 1 1 1)))
+                               (+ r.center (vec 0 -20))
+                               (if bstate.hover
+                                   (rgba 1 1 1 1)
+                                   (rgba 0 0 0 1)))
+      (when (. state.state.shop-row props.index)
+        (let [def (. data.unit-types (. state.state.shop-row props.index :unit-type))]
+          (when def
+            (love.graphics.push)
+            (let [p (+ r.center (vec 0 8))]
+              (love.graphics.translate p.x p.y))
+            (graphics.set-color (get-class-color (. def.classes 1)))
+            (match def.shape-type
+              :circle (love.graphics.circle :fill 0 0 def.radius)
+              :polygon (love.graphics.polygon :fill (unpack def.points))
+              _ (love.graphics.polygon :fill (unpack def.points)))
+            (love.graphics.pop)))))
+        ;(love.graphics.setShader)))
     bstate))
 
 

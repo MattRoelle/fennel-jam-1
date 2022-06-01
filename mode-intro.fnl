@@ -11,7 +11,7 @@
 (local aabb (require :aabb))
 (local Director (require :director))
 (local aseprite (require :aseprite))
-
+(local arena-shader (require :arena-shader))
 (local {: stage-size : center-stage : arena-margin : arena-offset : arena-size} (require :constants))
 
 ;(local moonshine (require :moonshine))
@@ -112,8 +112,8 @@
   (love.graphics.clear)
   (love.graphics.scale state.state.screen-scale.x state.state.screen-scale.y)
   (love.graphics.setColor 1 1 1 1)
-  (self.bg-quad:setViewport (* -0.5 self.bg-t)
-                            self.bg-t
+  (self.bg-quad:setViewport (* -3 self.bg-t)
+                            (* 4 self.bg-t)
                             stage-size.x stage-size.y
                             aseprite.bgpat.width aseprite.bgpat.height)
   (love.graphics.draw self.bg-img.img self.bg-quad))
@@ -168,33 +168,6 @@
 (set arena-draw-system.filter (tiny.requireAll :arena-draw :z-index))
 
 
-(local arena-shader-code
-    "
-float res = 0.003;
-float threshold = 0.01;
-vec4 effect(vec4 color, Image tex, vec2 texture_coords, vec2 screen_coords)
-{
-    vec4 texturecolor = Texel(tex, texture_coords);
-    vec4 up = Texel(tex, texture_coords+vec2(0,-res));
-    vec4 right = Texel(tex, texture_coords+vec2(res,0));
-    vec4 upright = Texel(tex, texture_coords+vec2(res,-res));
-    vec4 down = Texel(tex, texture_coords+vec2(0,res));
-    vec4 left = Texel(tex, texture_coords+vec2(-res,0));
-    vec4 downleft = Texel(tex, texture_coords+vec2(-res,res));
-
-    if (texturecolor.a > threshold && (up.a < threshold || right.a < threshold || upright.a < threshold)) {
-      return texturecolor * 2.0;
-    }
-
-    if (texturecolor.a < threshold && (up.a > threshold || right.a > threshold || upright.a > threshold)) {
-      return vec4(0.0/255.0,0.0/255.0,0.0/255.0,1);
-    }
-
-      return texturecolor * color;
-}
-    ")
-
-(local arena-shader (love.graphics.newShader arena-shader-code))
 
 (λ arena-draw-system.preProcess [self]
   (love.graphics.setCanvas arena-canvas-entities)
