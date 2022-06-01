@@ -31,42 +31,78 @@
   (when self.tl
     (self.tl:cancel))
   (set self.tl
-      (fire-timeline
-       (self:go-home)
-       (self:speak "Welcome to DOINK!#I am king doink.")
-       (timeline.wait 0.5)
-       (self:speak "If you already know#how to play.....# #....just start buying crap")
-       (timeline.wait 0.5)
-       (table.insert timelines
-                     (fire-timeline
-                      (timeline.tween 0.5 self {:pos (- stage-size (vec 350 150))
-                                                :angle -0.3})))
-       (self:speak "This is MY shop#I make the rules...#So, everything costs $3" 2)
-       (self:go-home)
-       (set self.eye-state :angry)
-       (self:speak "IF YOU DO NOT#LIKE MY SHOP!?#...That is disrespectful")
-       (set self.eye-state :normal)
-       (self:speak "However, I like money#So, If you pay me $1#you can have new stuff" 3)
-       (table.insert timelines
-                     (fire-timeline
-                      (timeline.tween 0.5 self {:pos (- stage-size (vec 300 150))
-                                                :angle -0.3})))
-       (self:speak "Once you buy a team#Click this button to#end your turn" 3)
-       (self:go-home)
-       (self:speak "That's all for now,#you can figure the#rest out yourself#" 3)
-       (timeline.wait 0.5)
-       (self:speak "GLHF"))))
+       (fire-timeline
+        (set self.doing-intro true)
+        (self:go-home)
+        (self:speak "Welcome to DOINK!#I am king doink.")
+        (timeline.wait 0.25)
+        (self:speak "If you already know#how to play.....# #....just start buying crap")
+        (timeline.wait 0.25)
+        (fire-timeline
+         (timeline.tween 0.5 self {:pos (- stage-size (vec 350 150))
+                                   :angle -0.3}))
+        (self:speak "This is MY shop#I make the rules...#So, everything costs $3" 2)
+        (self:go-home)
+        (timeline.wait 0.5)
+        (set self.eye-state :angry)
+        (self:speak "IF YOU DO NOT#LIKE MY SHOP!?#...That is disrespectful")
+        (set self.eye-state :normal)
+        (self:speak "However, I like money#So, If you pay me $1#you can have new stuff" 3)
+        (set self.move-tl
+             (fire-timeline
+              (timeline.tween 0.5 self {:pos (- stage-size (vec 300 150))
+                                        :angle -0.3})))
+        (self:speak "Once you buy a team#Click this button to#end your turn" 3)
+        (set self.eye-state :angry)
+        (self:speak "AND THEN THEY WILL#FIGHT TO THE DEATH#IN ELITE COMBAT AGAINST#MY TEAM OF DOINKS" 3)
+        (set self.eye-state :normal)
+        (self:go-home)
+        (timeline.wait 0.5)
+        (self:speak "That's all for now,#you can figure the#rest out yourself#" 3)
+        (timeline.wait 0.5)
+        (self:speak "GLHF")
+        (set self.doing-intro false))))
 
 (λ Referee.go-home [self]
-  (timeline.tween 0.5 self {:pos self.home
-                            :angle 0.2} :outQuad))
+  (when self.move-tl
+    (self.move-tl:cancel))
+  (set self.doing-combat true)
+  (set self.move-tl
+       (fire-timeline
+           (timeline.tween 0.5 self {:pos self.home
+                                     :angle 0.2} :outQuad)
+           (set self.doing-combat false))))
 
-(λ Referee.speak! [self text ?hold]
+(λ Referee.play-combat [self]
   (when self.tl
     (self.tl:cancel))
   (set self.tl
-       (fire-timeline)
-       (self:speak text ?hold)))
+       (fire-timeline
+        (fire-timeline
+         (timeline.tween 0.75 self {:pos (/ stage-size 2)} :outQuad))
+        (self:speak "CORNERS!!!")
+        (timeline.wait 0.5)
+        (set self.eye-state :angry)
+        (self:speak (.. "SQUAD " state.state.display-level " ASSEMBLE!#DONT MESS IT UP"))
+        (set self.eye-state :normal)
+        (self:go-home)
+        (set self.eye-state :angry)
+        (timeline.wait 2)
+        (self:speak "FIGHT!")
+        (state.state.director:screen-shake)
+        (set self.eye-state :normal))))
+        
+
+(λ Referee.speak! [self text ?hold]
+  (when self.doing-combat
+    (do (lua :return)))
+  (when self.tl
+    (self.tl:cancel))
+  (set self.tl
+       (fire-timeline
+         (set self.doing-intro false)
+         (self:go-home)
+         (self:speak text ?hold))))
 
 (λ Referee.speak [self text ?hold]
     (set self.talking true)

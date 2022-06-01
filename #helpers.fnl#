@@ -27,11 +27,11 @@
 
 (λ get-class-color [class-type]
   (match class-type 
-    :enemy (hexcolor :e12c22ff)
-    :spawners (hexcolor :b424e0ff)
-    :bumpers (hexcolor :ffbc4eff)
-    :shooters (hexcolor :00dedaff)
-    :traders (hexcolor :71cf21ff)
+    :enemy (hexcolor :c21d14ff)
+    :spawners (hexcolor :5a15c2ff)
+    :bumpers (hexcolor :e09719ff)
+    :shooters (hexcolor :74f5fdff)
+    :traders (hexcolor :ff)
     :lildoink (hexcolor :20D050ff)
     _ (rgba 1 1 1 1)))
 

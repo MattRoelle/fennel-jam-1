@@ -52,44 +52,6 @@
                               {:label :Choose
                                :on-click #(state.state.director:choose-upgrade upgrade)})]])]]]))]])
 
-(λ class-tooltip [class-info sz]
-  (let [copy class-info.class-type]
-    [[view {:display :flex
-            :position (+ (vec 0 80) (- center-stage (/ sz 2)))
-            :size sz
-            :color (rgba 0 0 0 1)
-            :padding (vec 4 4)}
-
-      [[text {:text copy :color (rgba 1 1 1 1)}]]]]))
-
-(λ unit-tooltip [unit sz]
-  (let [copy (get-copy-str :en :units unit.type)
-        stats (calc-stats unit)]
-    [[view {:display :flex
-            :position (+ (vec 0 80) (- center-stage (/ sz 2)))
-            :size sz
-            :color (rgba 0 0 0 1)
-            :padding (vec 4 4)}
-
-      [[view {:display :flex
-              :flex-direction :column}
-        [[text {:text (.. "HP:" stats.hp) :color (rgba 1 1 1 1)}]
-         [text {:text (.. "Defense: " stats.defense) :color (rgba 1 1 1 1)}]
-         [text {:text (.. "DMG: " stats.damage) :color (rgba 1 1 1 1)}]]]
-       [text {:text copy :color (rgba 1 1 1 1)}]]]]))
-
-(λ tooltip []
-  [view {:display :absolute}
-    (let [(tooltip-type v)
-          (if (> (or (?. state.state :hover-unit :t) 0) state.state.time)
-              (values :unit state.state.hover-unit)
-              (> (or (?. state.state :hover-class :t) 0) state.state.time)
-              (values :class state.state.hover-class))
-          sz (vec 400 80)]
-      (when v
-        (if (= tooltip-type :unit)
-            (unit-tooltip v sz)
-            (class-tooltip v sz))))])
 
 (λ upgrade-list []
   [view {:display :stack
@@ -335,6 +297,13 @@
   (let [free? (and (= 0 state.state.shop-rolls)
                    state.state.upgrades.reroll!)]
     (when (or free? (> state.state.money 0))
+      (state.state.referee:speak!
+       (lume.randomchoice
+        (if free?
+            ["On sale for free 99"
+             "cheater"]
+            ["disrespectful"
+             "ok new stuff"])))
       (set state.state.shop-rolls (+ state.state.shop-rolls 1))
       (when (not free?)
         (set state.state.money (- state.state.money 1)))
@@ -375,7 +344,7 @@
   ;; Add walls
   (set self.bottom-wall
     (new-entity Box2dRectangle
-                {:pos (vec (/ arena-size.x 2) (* 1.25 arena-size.y))
+                {:pos (vec (/ arena-size.x 2) (* 1.28 arena-size.y))
                  :shrink-position (vec (/ arena-size.x 2) (* 1 arena-size.y))
                  :arena-draw-fg
                  (fn [self]
@@ -388,7 +357,7 @@
 
   (set self.top-wall
     (new-entity Box2dRectangle
-                {:pos (vec (/ arena-size.x 2) (* -0.25 arena-size.y))
+                {:pos (vec (/ arena-size.x 2) (* -0.28 arena-size.y))
                  :shrink-position (vec (/ arena-size.x 2) (* 0 arena-size.y))
                  :arena-draw-fg
                  (fn [self]
@@ -401,7 +370,7 @@
 
   (set self.left-wall
     (new-entity Box2dRectangle
-                {:pos (vec (* arena-size.x -0.27) (/ arena-size.y 2))
+                {:pos (vec (* arena-size.x -0.29) (/ arena-size.y 2))
                  :shrink-position (vec (* arena-size.x 0.05) (/ arena-size.y 2))
                  :arena-draw-fg
                  (fn [self]
@@ -414,7 +383,7 @@
 
   (set self.right-wall
     (new-entity Box2dRectangle
-                {:pos (vec (* arena-size.x 1.27) (/ arena-size.y 2))
+                {:pos (vec (* arena-size.x 1.29) (/ arena-size.y 2))
                  :shrink-position (vec (* arena-size.x 0.95) (/ arena-size.y 2))
                  :arena-draw-fg
                  (fn [self]
@@ -453,8 +422,10 @@
                        :position (vec (- stage-size.x 160) (- stage-size.y 88))})
         (imm-stateful button state.state [:reroll-shop-btn]
                       {:label "Reroll 1"
-                       :disabled (or (not state.state.started)
-                                     (not= :shop state.state.phase))
+                       :disabled
+                       (or (not state.state.started)
+                           (not state.state.shop-rolls)
+                           (not= :shop state.state.phase))
                        :size (vec 100 80)
                        :on-click #(self:buy-roll-shop)
                        :position (vec 20 350)})
@@ -465,8 +436,7 @@
         (level-display)
         (team-count-display)
         (shop-row)
-        (upgrade-screen)
-        (tooltip)]]])
+        (upgrade-screen)]]])
    (let [fps (love.timer.getFPS)]
      (love.graphics.setColor 1 0 0 1)
      (love.graphics.print (tostring fps) 4 4)
@@ -478,13 +448,26 @@
   (set state.state.money (+ state.state.money v)))
 
 (λ Director.spawn-enemy-group [self pos group]
+  (var ix 0)
   (each [_ enemy-type (ipairs group)]
-    (let [def (. data.enemy-types enemy-type)
+    (set ix (+ ix 1))
+    (let [root (- arena-size (vec 130 80))
+          x (* 32 (% ix 4))
+          y (* 32 (math.floor (/ ix 4)))
+          pos (+ root (vec x y))
+          def (. data.enemy-types enemy-type)
           unit {:hp def.hp
                 :damage def.damage
                 :type enemy-type}]
-      (tiny.addEntity ecs.world
-                      (new-entity Unit {: pos : unit :team :enemy})))))
+      (print :pos pos)
+      (tiny.addEntity
+       ecs.world
+       (new-entity Unit
+                   {: pos
+                    :targpos (pos:clone)
+                    : unit
+                    :team :enemy})))))
+      
 
 (λ Director.choose-upgrade [self upgrade]
   (set state.state.upgrade-screen-open? false)
@@ -516,6 +499,8 @@
   (ent:flash (rgba 1 1 0 1)))
 
 (λ Director.sell-unit [self unit]
+  (when (or (not= :shop state.state.phase) state.state.combat-started)
+    (do (lua :return)))
   (set state.state.team-state
        (icollect [_ b (ipairs state.state.team-state)]
          (when (not= b.id unit.id) b)))
@@ -628,6 +613,13 @@
     (do (lua :return)))
   (let [shop-item (. state.state.shop-row index)]
     (when (>= state.state.money shop-item.cost)
+      (state.state.referee:speak!
+       (lume.randomchoice
+        ["Hmmm... interesting"
+         "OKAY CHEATER"
+         "WOW"
+         "Nice pick.... (lol)"
+         "LOL"]))
       (set state.state.money (- state.state.money shop-item.cost))
       (self:screen-shake)
       (let [def (. data.unit-types shop-item.unit-type)
@@ -699,38 +691,16 @@
   (each [k v (pairs state.state.destroy-after-combat)]
     (set v.dead true))
   (set state.state.destroy-after-combat {})
-  (local spin-in
-         {:z-index 20000
-          :t 0
-          :id (get-id)
-          :arena-draw-fg
-          (fn [self]
-            (love.graphics.push)
-            (love.graphics.translate (/ arena-size.x 2)
-                                     (/ arena-size.y 2))
-            (love.graphics.rotate (* self.t 2 math.pi))
-            (love.graphics.scale (* 3 self.t) (* 3 self.t))
-            (graphics.print-centered "VICTORY" assets.f32
-                                     (vec 0 0) (rgba 1 1 1 1))
-            (love.graphics.pop))})
-  (tiny.addEntity ecs.world spin-in)
-  (timeline.tween 1.5 spin-in {:t 1} :outQuad)
   (each [team teamlist (pairs state.state.teams)]
     (each [_ unit (pairs teamlist)]
       (unit:pop)
       (timeline.wait 0.2)))
-  (timeline.wait 1)
-  (set spin-in.dead true)
-  (effects.text-flash (.. "Level  " state.state.display-level " Complete")
-                      center-stage
-                      (rgba 1 1 1 1)
-                      assets.f32)
   (timeline.wait 1))
 
 (λ text-flash [s pos color ?font])
 
 (λ Director.line-up-units [self]
-  (each [_ team (ipairs [:player :enemy])]
+  (each [_ team (ipairs [:player])]
     (var ix 0)
     (each [k ent (pairs (. state.state.teams team))]
       (set ix (+ ix 1))
@@ -744,8 +714,8 @@
           (timeline.tween 1 ent
                           {:targpos (+ root
                                        (* 24 (vec x y)))}
-                          :outQuad)))))
-  (timeline.wait 1))
+                          :outQuad))))))
+
 
 (λ Director.do-shop-phase [self]
   (set state.state.shop-rolls 0)
@@ -777,22 +747,12 @@
   (set state.state.shop-row [])
   (set state.state.phase :combat))
 
-(λ Director.pre-combat-animation [self])
-  ;(set self.divider.targpos (self.divider.pos:clone))
- ;(timeline.tween 1 self.divider
- ;                {:targpos self.divider.center-pos}
- ;                :outQuad
- ;(timeline.wait 0.5))
+(λ Director.spawn-enemies [self group]
+  (self:spawn-enemy-group
+   (* 0.9 arena-size)
+   group))
 
-(λ Director.spawn-enemies [self group-options waves]
-  (each [_ wave (ipairs waves)]
-    (for [i 1 wave.groups]
-      (let [grp (lume.randomchoice group-options)]
-        (self:spawn-enemy-group
-         (* 0.9 arena-size)
-         grp)))))
-
-(local wall-time 5)
+(local wall-time 16)
 (λ Director.start-walls [self]
   (set self.wall-timelines [])
   ;; (table.insert self.wall-timelines
@@ -819,26 +779,19 @@
        (timeline.tween 2 wall {:targpos wall.pos} :outQuad)))))
 
 (λ Director.title-screen [self]
-  (local spin-in
+  (local bounce-in
          {:z-index 20000
           :t 0.75
           :id (get-id)
-          :arena-draw-fg
+          :draw
           (fn [self]
-            (love.graphics.push)
-            (love.graphics.translate (/ arena-size.x 2)
-                                     (/ arena-size.y 2))
-            (love.graphics.rotate (* self.t 2 math.pi))
-            (love.graphics.scale (* 3 self.t) (* 3 self.t))
-            (graphics.print-centered "FLOOB" assets.f32
-                                     (vec 0 0) (rgba 1 0 0 1))
-            (love.graphics.pop))})
-  (tiny.addEntity ecs.world spin-in)
-  (timeline.tween 1 spin-in {:t 1} :outQuad)
+            (graphics.image aseprite.title (- (/ stage-size 2) (vec 0 20)) (vec self.t self.t)))})
+  (tiny.addEntity ecs.world bounce-in)
+  (timeline.tween 1.5 bounce-in {:t 1} :outBounce)
   (while (not (input.mouse-released?))
     (coroutine.yield))
   (set state.state.started true)
-  (set spin-in.dead true))
+  (set bounce-in.dead true))
   
 
 (λ Director.game-over [self]
@@ -878,24 +831,25 @@
   (self:setup-arena-entities)
   (self:title-screen)
   (state.state.referee:play-intro)
+  (timeline.wait 1)
   ;; Main game loop
   (while (not state.state.game-over?)
     (coroutine.yield)
+    (print :level state.state.level)
     (let [level-def (assert (. data.levels state.state.level)
                             "Error loading level")]
       (match level-def
         {:type :combat
-         : group-options
-         : waves}
+         : options}
         (do
           (timeline.wait 0.5)
           (self:restore-unit-state)
           (self:do-shop-phase)
-          (self:pre-combat-animation)
-          (self:spawn-enemies group-options waves)
-          (timeline.wait 0.5)
+          (state.state.referee:play-combat)
           (self:line-up-units)
-          (timeline.wait 1)
+          (timeline.wait 2.5)
+          (self:spawn-enemies (lume.randomchoice options))
+          (timeline.wait 3)
           (self:start-combat)
           (timeline.wait 2)
           (self:start-walls)
@@ -914,6 +868,11 @@
 
       (when (and (> state.state.unit-count 0)
                  (= :combat level-def.type))
+        (state.state.referee:speak!
+         (lume.randomchoice
+          ["I guess you won...#barely"
+           "I WILL HAVE WORDS#WITH MY SQUAD"
+           "I need to check#the tape"]))
         (self:play-win-level-sequence)
         (set state.state.display-level (+ state.state.display-level 1)))
 

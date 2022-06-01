@@ -105,6 +105,7 @@
     (self.box2d.body:applyLinearImpulse iv.x iv.y))
   (let [(x y) (self.box2d.body:getPosition)]
     (state.state.director:muzzle-flash (vec x y)))
+  (self:flash)
   (self:on-class-change))
 
 (λ Unit.on-class-change [self]
@@ -380,7 +381,7 @@
         p (vec x y)
         angle (p:angle-to ep)
         iv (polar-vec2 angle (or self.bump-force 64))]
-    (self.box2d.body:setAngle (iv:angle))
+    ;(self.box2d.body:setAngle (iv:angle))
     (self.box2d.body:applyLinearImpulse iv.x iv.y)))
 
 (λ Unit.bump-update [self dt]

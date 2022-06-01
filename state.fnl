@@ -22,7 +22,7 @@
           :phase :shop
           :display-level 1
           :level 1
-          :money 100
+          :money 0
           :arena-zoom 1
           :enemy-count 0
           :upgrades {}

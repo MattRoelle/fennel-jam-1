@@ -92,11 +92,13 @@
   (let [bstate (or ?state {:hover false})
         (mouse-down? hovering?) (mouse-interaction context)]
     (set bstate.hover hovering?)
-    (when hovering?
-      (set state.state.hover-class
-           {:class-type props.class-type
-            :count props.count
-            :t (+ state.state.time 0.05)}))
+    (when (and hovering? (not= state.state.hover-class bstate))
+      (set state.state.hover-class bstate)
+      (when (and (not state.state.referee.doing-intro)
+                 (= :shop state.state.phase))
+        (state.state.referee:speak! props.class-type)))
+    (when (and (not hovering?) (= state.state.hover-class bstate))
+      (set state.state.hover-class nil))
     (graphics.rectangle context.position context.size
                         (if bstate.hover
                             (rgba 0.4 0.4 0.4 1)
@@ -123,11 +125,13 @@
     (set bstate.hover hovering?)
     (when (and hovering? mouse-down?)
       (state.state.director:sell-unit props.unit))
-    (when hovering?
-      (set state.state.hover-unit
-           (lume.merge
-            props.unit
-            {:t (+ state.state.time 0.05)})))
+    (when (and hovering? (not= state.state.hover-unit-display bstate))
+      (set state.state.hover-unit-display bstate)
+      (when (and (not state.state.referee.doing-intro)
+                 (= :shop state.state.phase))
+        (state.state.referee:speak! props.unit.type)))
+    (when (and (not hovering?) (= state.state.hover-unit-display bstate))
+      (set state.state.hover-unit-display nil))
     (graphics.rectangle context.position context.size
                         (if bstate.hover
                             (rgba 0 0 0 1)
@@ -173,12 +177,12 @@
   (let [bstate (or ?state {:hover false})
         (mouse-down? hovering?) (mouse-interaction context)]
     (set bstate.hover hovering?)
-    (when hovering?
-      (set state.state.hover-unit
-           {:type (. state.state.shop-row props.index :unit-type)
-            :t (+ state.state.time 0.05)
-            :level 1})
-      (set state.state.hover-shop-btn bstate))
+    (when (and hovering? (not= state.state.hover-shop-button bstate))
+      (set state.state.hover-shop-button bstate)
+      (when (not state.state.referee.doing-intro)
+        (state.state.referee:speak! (. state.state.shop-row props.index :unit-type))))
+    (when (and (not hovering?) (= state.state.hover-shop-button bstate))
+      (set state.state.hover-shop-button nil))
     (when (and hovering? mouse-down?)
       (state.state.director:purchase props.index))
     (set bstate.mouse-down? mouse-down?)
