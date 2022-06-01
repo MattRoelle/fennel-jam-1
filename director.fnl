@@ -873,11 +873,11 @@
     (unit:start-combat)))
 
 (λ Director.main-timeline [self]
-  ;; TODO: SAUCE
-  ;; (set state.state.referee
-  ;;      (tiny.addEntity ecs.world (new-entity Referee)))
+  (set state.state.referee
+       (tiny.addEntity ecs.world (new-entity Referee)))
   (self:setup-arena-entities)
   (self:title-screen)
+  (state.state.referee:play-intro)
   ;; Main game loop
   (while (not state.state.game-over?)
     (coroutine.yield)

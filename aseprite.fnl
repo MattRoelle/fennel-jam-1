@@ -4,6 +4,13 @@
 :arena-bg (let [img (love.graphics.newImage "assets/export-arena-bg.png")] (img:setFilter :nearest :nearest) {: img :width (img:getWidth) :height (img:getHeight)}) 
 :bgpat (let [img (love.graphics.newImage "assets/export-bgpat.png")] (img:setFilter :nearest :nearest) {: img :width (img:getWidth) :height (img:getHeight)}) 
 :star (let [img (love.graphics.newImage "assets/export-star.png")] (img:setFilter :nearest :nearest) {: img :width (img:getWidth) :height (img:getHeight)}) 
+:king-doink (let [img (love.graphics.newImage "assets/export-king-doink.png")] (img:setFilter :nearest :nearest) {: img :width (img:getWidth) :height (img:getHeight)}) 
+:text-bubble (let [img (love.graphics.newImage "assets/export-text-bubble.png")] (img:setFilter :nearest :nearest) {: img :width (img:getWidth) :height (img:getHeight)}) 
+:king-doink-eye-base-normal (let [img (love.graphics.newImage "assets/export-king-doink-eye-base-normal.png")] (img:setFilter :nearest :nearest) {: img :width (img:getWidth) :height (img:getHeight)}) 
+:king-doink-eye-base-angry (let [img (love.graphics.newImage "assets/export-king-doink-eye-base-angry.png")] (img:setFilter :nearest :nearest) {: img :width (img:getWidth) :height (img:getHeight)}) 
+:king-doink-mouth-o (let [img (love.graphics.newImage "assets/export-king-doink-mouth-o.png")] (img:setFilter :nearest :nearest) {: img :width (img:getWidth) :height (img:getHeight)}) 
+:king-doink-mouth-flat (let [img (love.graphics.newImage "assets/export-king-doink-mouth-flat.png")] (img:setFilter :nearest :nearest) {: img :width (img:getWidth) :height (img:getHeight)}) 
+:king-doink-mouth-smile (let [img (love.graphics.newImage "assets/export-king-doink-mouth-smile.png")] (img:setFilter :nearest :nearest) {: img :width (img:getWidth) :height (img:getHeight)}) 
 :flash-eye (let [img (love.graphics.newImage "assets/export-flash-eye.png")] (img:setFilter :nearest :nearest) {: img :width (img:getWidth) :height (img:getHeight)}) 
 :spawn (let [img (love.graphics.newImage "assets/export-spawn.png")] (img:setFilter :nearest :nearest) {: img :width (img:getWidth) :height (img:getHeight)}) 
 }
