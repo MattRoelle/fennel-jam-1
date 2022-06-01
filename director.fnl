@@ -24,6 +24,7 @@
 (local {: get-copy-str} (require :copy))
 (local assets (require :assets))
 (local effects (require :effects))
+(local arena-canvas-splat (require :canvas))
 
 ;(local wall-color (hexcolor :4460aaff))
 (local wall-color (hexcolor :000000ff))
@@ -40,13 +41,16 @@
                :padding (vec 4 4)}
          [[text {:text "Choose Upgrade"
                  :font assets.f32
-                 :color (rgba 0 0 0 1)}]
+                 :color (rgba 1 1 1 1)}]
           [view {:display :flex}
             (icollect [ix upgrade (ipairs state.state.upgrade-choices)]
               [view {:display :flex
                      :flex-direction :column}
                [[text {:text upgrade.upgrade
                        :font assets.f32
+                       :color (rgba 1 1 1 1)}]
+                [text {:text (get-copy-str :en :upgrades upgrade.upgrade)
+                       :font assets.f16
                        :color (rgba 1 1 1 1)}]
                 (imm-stateful button upgrade [:bstate]
                               {:label :Choose
@@ -104,16 +108,16 @@
                            :size (vec (- arena-margin.x 10) 31)})]]))]]])
 
 (λ money-display []
-  [view {:display :stack
-         :direction :right
-         :color (rgba 0 0 0 1)
-         :position (vec 132 5)
-         :padding (vec 8 0)
-         :size (vec 100 30)}
-   [(when state.state.started
-      [text {:text (.. "$" (tostring state.state.money))
-             :font assets.f32      
-             :color (rgba 1 1 1 1)}])]])
+  (when state.state.started
+    [view {:display :stack
+           :direction :right
+           :color (rgba 0 0 0 1)
+           :position (vec 132 5)
+           :padding (vec 8 0)
+           :size (vec 100 30)}
+      [[text {:text (.. "$" (tostring state.state.money))
+              :font assets.f32      
+              :color (rgba 1 1 1 1)}]]]))
 
 (λ team-count-display []
   [view {:display :stack
@@ -222,7 +226,7 @@
     (ea.box2d.body:applyLinearImpulse (* (- f) c) (* (- f) s))))
 
 (λ Director.bullet-hit [self bullet target]
-  (target:take-dmg (+ bullet.bullet.dmg
+  (target:take-dmg (+ 1;bullet.bullet.dmg
                       (if state.state.upgrades.ability-dmg! 1 0)))
   (self:screen-shake)
   (self:brief-pause)
@@ -432,11 +436,11 @@
         (upgrade-list)
         (class-list)
         (unit-list)
-        (money-display)
         (level-display)
         (team-count-display)
         (shop-row)
-        (upgrade-screen)]]])
+        (upgrade-screen)
+        (money-display)]]])
    (let [fps (love.timer.getFPS)]
      (love.graphics.setColor 1 0 0 1)
      (love.graphics.print (tostring fps) 4 4)
@@ -668,6 +672,7 @@
     (set state.state.arena-mpos mpos)))
 
 (λ Director.open-upgrade-screen [self]
+  (state.state.referee:speak! "Have a prize#...even though#you're cheating)")
   (local choices [])
   (while (< (length choices) 2)
     (let [choice (lume.randomchoice (lume.keys data.upgrades))]
@@ -778,6 +783,20 @@
       (fire-timeline
        (timeline.tween 2 wall {:targpos wall.pos} :outQuad)))))
 
+(λ Director.win-screen [self]
+  (local bounce-in
+         {:z-index 20000
+          :t 0.75
+          :id (get-id)
+          :draw
+          (fn [self]
+            (graphics.image aseprite.win (- (/ stage-size 2) (vec 0 20)) (vec self.t self.t)))})
+  (tiny.addEntity ecs.world bounce-in)
+  (timeline.tween 1.5 bounce-in {:t 1} :outBounce)
+  (while (not (input.mouse-released?))
+    (coroutine.yield))
+  (self.reset-game))
+
 (λ Director.title-screen [self]
   (local bounce-in
          {:z-index 20000
@@ -818,6 +837,23 @@
   (timeline.wait 1)
   (self.reset-game))
 
+(λ Director.clear-splat [self]
+  (love.graphics.setCanvas arena-canvas-splat)
+  (love.graphics.clear)
+  (love.graphics.setCanvas))
+
+(λ Director.splat [self pos color]
+  (when state.state.combat-started
+    (love.graphics.setCanvas arena-canvas-splat)
+    (for [i 1 (love.math.random 5 12)]
+        (let [p (+ pos
+                   (vec (love.math.random -30 30)
+                        (love.math.random -30 30)))]
+          (graphics.circle p (love.math.random 3 30)
+                           (rgba color.r color.g color.b
+                             (+ 0.2 (* (math.random) 0.3))))))
+    (love.graphics.setCanvas)))
+
 (λ Director.start-combat [self]
   (set state.state.combat-started true)
   (each [_ unit (pairs state.state.teams.player)]
@@ -839,6 +875,8 @@
     (let [level-def (assert (. data.levels state.state.level)
                             "Error loading level")]
       (match level-def
+        {:type :win}
+        (self:win-screen)
         {:type :combat
          : options}
         (do
@@ -863,6 +901,7 @@
           (while state.state.upgrade-screen-open?
             (coroutine.yield))))
 
+      (self:clear-splat)
       (self:reset-walls)
       (set state.state.combat-started false)
 

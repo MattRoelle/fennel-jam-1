@@ -24,7 +24,7 @@
   :banker
   {:tier 1 
    :defense 1
-   :hp 4
+   :hp 6
    :damage 4
    :classes [:traders]
    :shape-type :circle
@@ -35,7 +35,7 @@
   :shopkeeper
   {:tier 1 
    :defense 1
-   :hp 50
+   :hp 5
    :damage 3
    :classes [:traders]
    :shape-type :circle
@@ -46,7 +46,7 @@
   :fighter
   {:tier 1 
    :defense 1
-   :hp 7
+   :hp 9
    :damage 6
    :classes [:bumpers]
    :shape-type :circle
@@ -58,14 +58,14 @@
   {:tier 1 
    :defense 1
    :hp 4
-   :damage 1
+   :damage 2
    :classes [:spawners]
    :shape-type :circle
    :radius 16
    :mass 5
    :color :bumper
    :bump-timer 2}
-  :spawner
+  :mommer
   {:tier 1 
    :defense 0
    :hp 3
@@ -101,7 +101,7 @@
    :linear-damping 0.001
    :range 0.7
    :fire-speed 50
-   :ability-speed 0.3}
+   :ability-speed 2.25}
   :sniper
   {:tier 1
    :defense 1
@@ -131,23 +131,22 @@
    :linear-damping 0.001
    :range 0.7
    :fire-speed 50
-   :ability-speed 2}}
+   :ability-speed 0.3}}
  ;; tier 2
  ;; :shotgunner {:ai-type :shoot :hp 15 :damage 3 :tier 2}
  ;; :pulse {:ai-type :bump :hp 15 :damage 3 :linear-damping 0 :tier 2}}
  :enemy-types
  {:basic-1
-  {:hp 4
+  {:hp 3
    :damage 1
    :defense 0
-   :shape-type :polygon
-   :points [-14 0 -10 -10 0 -10 10 0 10 10 0 10]
+   :shape-type :circle
    :radius [9 14]
    :color :enemy
    :bump-force 128
    :ai-type :enemy}
   :basic-2
-  {:hp 4
+  {:hp 6
    :damage 1
    :defense 0
    :shape-type :polygon
@@ -157,7 +156,7 @@
    :bump-force 128
    :ai-type :enemy}
   :brute
-  {:hp 8
+  {:hp 18
    :damage 2
    :defense 0
    :shape-type :circle
@@ -166,27 +165,39 @@
    :bump-force 128
    :ai-type :enemy}
   :boss-1
-  {:hp 30
+  {:hp 50
    :damage 2
    :defense 0
-   :shape-type :circle
    :shape-type :polygon
-   :points [-70 -20 0 -90 50 20 20 -110]
-   :radius [30 40]
+   :points [-80 0 -10 30 20 10 -10 -30]
    :color :enemy
    :bump-force 128
    :ai-type :enemy}}
  :levels
  [{:type :combat
-   :options [[:basic-2 :basic-1 :basic-1 :basic-1]
-             [:basic-2 :basic-2 :basic-2 :basic-1]]}
+   :options [[:basic-1 :basic-1 :basic-2 :basic-2]]}
   {:type :combat
-   :options [[:basic-2 :basic-1 :basic-1 :basic-1 :basic-1 :basic-2 :basic-1]]}
+   :options [[:basic-2 :basic-1 :basic-1 :basic-1 :basic-1 :basic-1 :basic-2 :basic-2
+              :basic-2 :basic-1]]}
   {:type :upgrade}
   {:type :combat
-   :options [[:basic-1 :basic-1 :basic-1 :basic-2 :basic-1 :brute]]}
+   :options [[:basic-1 :basic-1 :basic-1 :basic-2 :basic-1 :brute
+              :basic-1 :basic-2]]}
   {:type :combat
-   :options [[:basic-1 :basic-1 :basic-1 :brute :brute :brute]]}
+   :options [[:basic-1 :basic-1 :basic-2 :basic-2 :basic-2 :basic-1 :brute :brute :brute]]}
   {:type :combat
-   :options [[:boss-1]]}
-  {:type :upgrade}]}
+   :options [[:boss-1 :basic-1 :basic-1]]}
+  {:type :upgrade}
+  {:type :combat
+   :options [[:boss-1 :brute :basic-2 :basic-2]]}
+  {:type :combat
+   :options [[:boss-1 :brute :basic-2 :basic-2
+              :basic-1 :basic-1 :basic-1 :basic-1 :basic-1 :basic-1 :basic-1 :basic-1
+              :basic-1 :basic-1 :basic-1]]}
+  {:type :upgrade}
+  {:type :combat
+   :options [[:boss-1 :brute :basic-2 :basic-2
+              :basic-2 :basic-2 :basic-1 :brute-1
+              :basic-1 :basic-1 :basic-1 :basic-1
+              :basic-2 :basic-2 :basic-2]]}
+  {:type :win}]}

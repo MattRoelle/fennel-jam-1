@@ -229,16 +229,17 @@
     (vec x y)))
 
 (λ Unit.fire-projectile [self direction]
-  (let [(x y) (self.box2d.body:getPosition)
-        pos (+ (vec x y) (* (direction:normalize) 10))]
-    (self.box2d.body:setAngle (direction:angle))
-    (state.state.director:muzzle-flash pos)
-    (tiny.addEntity ecs.world
-                    (new-entity Projectile
-                                {: pos
-                                 :speed (or self.def.fire-speed 50)
-                                 :range (or self.def.range 0.3)
-                                 : direction}))))
+  (when (not self.dead)
+    (let [(x y) (self.box2d.body:getPosition)
+          pos (+ (vec x y) (* (direction:normalize) 10))]
+      (self.box2d.body:setAngle (direction:angle))
+      (state.state.director:muzzle-flash pos)
+      (tiny.addEntity ecs.world
+                      (new-entity Projectile
+                                  {: pos
+                                   :speed (or self.def.fire-speed 50)
+                                   :range (or self.def.range 0.3)
+                                   : direction})))))
 
 (λ Unit.shoot-enemy [self e]
   (let [(ex ey) (e.box2d.body:getPosition)
@@ -362,6 +363,7 @@
       (self:do-ability))))
 
 (λ Unit.destroy [self]
+  (state.state.director:splat (self:get-body-pos) (self:get-unit-color))
   (effects.box2d-explode (self:get-body-pos) 5 4 (rgba 1 1 1 1))
   (when state.state.combat-started
     (match self.unit.type

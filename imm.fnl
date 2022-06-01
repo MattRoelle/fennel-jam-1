@@ -12,6 +12,7 @@
 (local timeline (require :timeline))
 (local data (require :data))
 (local arena-shader (require :arena-shader))
+(local {: get-copy-str} (require :copy))
 
 (λ text [context props]
   "Basic text component"
@@ -96,7 +97,8 @@
       (set state.state.hover-class bstate)
       (when (and (not state.state.referee.doing-intro)
                  (= :shop state.state.phase))
-        (state.state.referee:speak! props.class-type)))
+        (state.state.referee:speak!
+         (get-copy-str :en :classes props.class-type))))
     (when (and (not hovering?) (= state.state.hover-class bstate))
       (set state.state.hover-class nil))
     (graphics.rectangle context.position context.size
@@ -129,7 +131,8 @@
       (set state.state.hover-unit-display bstate)
       (when (and (not state.state.referee.doing-intro)
                  (= :shop state.state.phase))
-        (state.state.referee:speak! props.unit.type)))
+        (state.state.referee:speak!
+         (get-copy-str :en :units props.unit.type))))
     (when (and (not hovering?) (= state.state.hover-unit-display bstate))
       (set state.state.hover-unit-display nil))
     (graphics.rectangle context.position context.size
@@ -180,7 +183,9 @@
     (when (and hovering? (not= state.state.hover-shop-button bstate))
       (set state.state.hover-shop-button bstate)
       (when (not state.state.referee.doing-intro)
-        (state.state.referee:speak! (. state.state.shop-row props.index :unit-type))))
+        (state.state.referee:speak!
+         (get-copy-str :en :units
+           (. state.state.shop-row props.index :unit-type)))))
     (when (and (not hovering?) (= state.state.hover-shop-button bstate))
       (set state.state.hover-shop-button nil))
     (when (and hovering? mouse-down?)

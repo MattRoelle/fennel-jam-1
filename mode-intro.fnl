@@ -13,6 +13,7 @@
 (local aseprite (require :aseprite))
 (local arena-shader (require :arena-shader))
 (local {: stage-size : center-stage : arena-margin : arena-offset : arena-size} (require :constants))
+(local arena-canvas-splat (require :canvas))
 
 ;(local moonshine (require :moonshine))
 
@@ -141,7 +142,7 @@
 ;(local arena-moonshine (moonshine arena-size.x arena-size.y moonshine.effects.dmg))
 ;(set arena-moonshine.dmg.palette "default")
 ;(set arena-moonshine.posterize.num_bands 16)
-;(arena-moonshine.chain moonshine.effects.dmg)
+                                        ;(arena-moonshine.chain moonshine.effects.dmg)
 
 (local arena-draw-fg-system (tiny.sortedProcessingSystem))
 (set arena-draw-fg-system.filter (tiny.requireAll :arena-draw-fg :z-index))
@@ -167,8 +168,6 @@
 (local arena-draw-system (tiny.sortedProcessingSystem))
 (set arena-draw-system.filter (tiny.requireAll :arena-draw :z-index))
 
-
-
 (λ arena-draw-system.preProcess [self]
   (love.graphics.setCanvas arena-canvas-entities)
   (love.graphics.push)
@@ -186,11 +185,12 @@
   (love.graphics.origin)
   (love.graphics.draw aseprite.arena-bg.img)
   (love.graphics.setColor 1 1 1 1)
-  (love.graphics.setShader arena-shader)
   (love.graphics.translate state.state.camera-shake.x state.state.camera-shake.y)
   (let [offset (- (/ (- (* state.state.arena-zoom arena-size) arena-size) 2))]
     (love.graphics.translate offset.x offset.y)
     (love.graphics.scale state.state.arena-zoom state.state.arena-zoom))
+  ;(love.graphics.draw arena-canvas-splat)
+  (love.graphics.setShader arena-shader)
   (love.graphics.draw arena-canvas-entities)
   (love.graphics.setShader)
   (love.graphics.draw arena-canvas-fg)
