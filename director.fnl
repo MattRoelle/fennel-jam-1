@@ -24,7 +24,8 @@
 (local assets (require :assets))
 (local effects (require :effects))
 
-(local wall-color (hexcolor :4460aaff))
+;(local wall-color (hexcolor :4460aaff))
+(local wall-color (hexcolor :000000ff))
 
 (λ upgrade-screen []
   [view {:display :absolute}
@@ -174,6 +175,14 @@
     (when (or (self:do-buff ea eb)
               (self:do-buff eb ea))
       (self:screen-shake))))
+
+(λ Director.spinner-collision [self ea eb]
+  (when (or (not eb.spinner-invin)
+            (< eb.spinner-invin state.state.time))
+    (set eb.spinner-invin (+ state.state.time 0.5))
+    (self:screen-shake)
+    (self:brief-pause)
+    (eb:take-dmg 1)))
 
 (λ Director.attack-bump [self ea eb col]
   (self:screen-shake)
@@ -326,7 +335,7 @@
   (set self.left-wall
     (new-entity Box2dRectangle
                 {:pos (vec (* arena-size.x -0.27) (/ arena-size.y 2))
-                 :shrink-position (vec (* arena-size.x 0) (/ arena-size.y 2))
+                 :shrink-position (vec (* arena-size.x 0.05) (/ arena-size.y 2))
                  :arena-draw-fg
                  (fn [self]
                    (self:draw-world-points))
@@ -339,7 +348,7 @@
   (set self.right-wall
     (new-entity Box2dRectangle
                 {:pos (vec (* arena-size.x 1.27) (/ arena-size.y 2))
-                 :shrink-position (vec (* arena-size.x 1) (/ arena-size.y 2))
+                 :shrink-position (vec (* arena-size.x 0.95) (/ arena-size.y 2))
                  :arena-draw-fg
                  (fn [self]
                    (self:draw-world-points))
@@ -413,6 +422,25 @@
   (tset state.state.upgrades upgrade.upgrade
         (+ (or (. state.state.upgrades upgrade.upgrade) 0) 1)))
 
+(λ Director.connect [self a b]
+  (fire-timeline
+   (local line {:z-index 10
+                :id (get-id)
+                :arena-draw-fg
+                (fn []
+                  (when (and (not a.dead) (not b.dead))
+                    (graphics.line (a:get-pos) (b:get-pos) 4 (rgba 1 1 1 1))))})
+   (tiny.addEntity ecs.world line)
+   (timeline.wait 0.25)
+   (set line.dead true)))
+
+(λ Director.direct-damage [self v ent target]
+  (self:screen-shake)
+  (self:brief-pause)
+  (self:connect ent target)
+  (target:take-dmg v)
+  (ent:flash (rgba 1 1 0 1)))
+
 (λ Director.sell-unit [self unit]
   (set state.state.team-state
        (icollect [_ b (ipairs state.state.team-state)]
@@ -424,6 +452,19 @@
       (.. "+ " unit.level)
       (ent:get-pos)
       (rgba 1 1 0 1)))
+  (fire-timeline
+   (timeline.wait 0.25)
+   (each [_ unit (ipairs state.state.team-state)]
+     (let [ent (state.get-entity-by-id unit.entity-id)]
+       (match unit.type
+         :trader
+         (let [target (ent:get-random-ally)]
+           (when target
+             (self:screen-shake)
+             (self:brief-pause)
+             (self:connect ent target)
+             (target:heal 1)
+             (ent:flash (rgba 1 1 0 1))))))))
   (self:calc-classes))
 
 (λ Director.calc-classes [self]
@@ -539,10 +580,6 @@
                       center-stage
                       (rgba 1 1 1 1)
                       assets.f32)
-  (self:add-gold
-   (if (< state.state.display-level 5)
-       10
-       15))
   (timeline.wait 1))
 
 (λ text-flash [s pos color ?font])
@@ -566,6 +603,23 @@
   (timeline.wait 1))
 
 (λ Director.do-shop-phase [self]
+  (self:add-gold 10)
+  (fire-timeline
+   (timeline.wait 0.25)
+   (each [_ unit (ipairs state.state.team-state)]
+     (let [ent (state.get-entity-by-id unit.entity-id)]
+       (match unit.type
+         :banker
+         (do
+           (self:brief-pause)
+           (self:screen-shake)
+           (ent:flash (rgba 1 1 0 1))
+           (self:add-gold 1)
+           (effects.text-flash
+             (.. "+ " 1)
+             (ent:get-pos)
+             (rgba 1 1 0 1))
+           (timeline.wait 0.3))))))
   (set state.state.phase :shop)
   (self:roll-shop)
   (while (= :shop state.state.phase)
@@ -590,26 +644,31 @@
          (* 0.9 arena-size)
          grp)))))
 
+(local wall-time 5)
 (λ Director.start-walls [self]
   (set self.wall-timelines [])
+  ;; (table.insert self.wall-timelines
+  ;;               (fire-timeline
+  ;;                (timeline.tween wall-time state.state {:arena-zoom 2} :inOutQuad)))
   (each [_ k (ipairs [:top-wall :left-wall :bottom-wall :right-wall])]
     (let [wall (. self k)]
       (set wall.targpos (wall.pos:clone))
       (table.insert self.wall-timelines
                     (fire-timeline
-                     (timeline.tween 12 wall {:targpos wall.shrink-position} :inOutQuad))))))
+                     (timeline.tween wall-time wall {:targpos wall.shrink-position} :inOutQuad))))))
 
 (λ Director.reset-walls [self]
   (when self.wall-timelines
     (each [_ tl (ipairs self.wall-timelines)]
       (tl:cancel)))
+  (fire-timeline)
+   ;(timeline.tween 2 state.state {:arena-zoom 1} :inOutQuad))
   (each [_ k (ipairs [:top-wall :left-wall :bottom-wall :right-wall])]
     (let [wall (. self k)
           (x y) (wall.body:getPosition)]
       (set wall.targpos (vec x y))
-      (table.insert self.wall-timelines
-                    (fire-timeline
-                     (timeline.tween 2 wall {:targpos wall.pos} :outQuad))))))
+      (fire-timeline
+       (timeline.tween 2 wall {:targpos wall.pos} :outQuad)))))
 
 (λ Director.title-screen [self]
   (local spin-in

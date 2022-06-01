@@ -100,7 +100,9 @@
   (let [iv (polar-vec2 (* (math.random) 2 math.pi) 20)]
     (self.box2d.body:applyLinearImpulse iv.x iv.y))
   (let [(x y) (self.box2d.body:getPosition)]
-    (state.state.director:muzzle-flash (vec x y))))
+    (state.state.director:muzzle-flash (vec x y)))
+  (match self.unit.type
+    :spinner (set self.spinner-count 5)))
 
 
 (λ Unit.get-unit-color [self]
@@ -109,6 +111,7 @@
     :healer (hexcolor :baabf7ff)
     :bumper (hexcolor :ef7d57ff)
     :shooter (hexcolor :38b764ff)
+    :merchant (hexcolor :a8b734ff)
     :support (hexcolor :41a6f6ff)
     _ (rgba 1 1 1 1)))
 
@@ -151,6 +154,32 @@
             (graphics.circle e1 2 (hexcolor :000000ff))
             (graphics.circle e2 2 (hexcolor :000000ff)))))))
 
+(λ Unit.get-spinner-position [self ix]
+  (let [thetastep (/ (* 2 math.pi) self.spinner-count)
+        theta (+ (* 2 self.spin-t) (* thetastep ix))]
+    (+ (self:get-pos)
+       (polar-vec2 theta self.spinner-radius))))
+
+(λ Unit.draw-spinners [self]
+  (for [i 1 self.spinner-count]
+    (let [p (self:get-spinner-position i)]
+      (graphics.circle p 5 (self:get-unit-color)))))
+
+(λ Unit.check-spinners [self]
+  (for [i 1 self.spinner-count]
+    (let [p (self:get-spinner-position i)]
+      (var colliding-ent nil)
+      (fn cb [fixture]
+        (let [id (fixture:getUserData)
+              ent (state.get-entity-by-id id)]
+          (when (and ent ent.team (not= ent.team self.team))
+            (set colliding-ent ent)))
+        0)
+      (state.state.pworld:rayCast (- p.x 7) p.y (+ p.x 7) p.y cb)
+      (state.state.pworld:rayCast p.x (- p.y 7) p.x (+ p.y 7) cb)
+      (when colliding-ent
+        (state.state.director:spinner-collision self colliding-ent)))))
+
 (λ Unit.arena-draw [self]
   (let [(x y) (self.box2d.body:getPosition)
         a (self.box2d.body:getAngle)
@@ -169,7 +198,8 @@
     (love.graphics.pop)
     (when (and (= :shop state.state.phase)
                self.unit.hovering)
-      (graphics.stroke-circle (vec x y) 32 4 (rgba 1 1 1 1)))))
+      (graphics.stroke-circle (vec x y) 32 4 (rgba 1 1 1 1)))
+    (self:draw-spinners)))
 
 (λ Unit.random-update [self dt]
   (when (> 0.02 (math.random))
@@ -225,13 +255,27 @@
     (let [iv (polar-vec2 (* (math.random) 2 math.pi) 16)]
       (self.box2d.body:applyLinearImpulse iv.x iv.y))))
 
+(λ Unit.get-random-ally [self]
+  (let [target-team (if (= :player self.team) :player :enemy)
+        targ-team  (lume.keys (. state.state.teams target-team))
+        ;; team (icollect [_ v (ipairs targ-team)]
+        ;;        (when (not= v self.id) v))
+        e-id (if (> (length targ-team) 0)
+                 (lume.randomchoice targ-team)
+                 nil)]
+    (when e-id
+      (let [ent (. state.state.teams target-team e-id)]
+        (when (not ent.dead) ent)))))
+
 (λ Unit.get-random-target [self]
   (let [target-team (if (= :player self.team) :enemy :player)
         targ-team  (lume.keys (. state.state.teams target-team))
         e-id (if (> (length targ-team) 0)
                  (lume.randomchoice targ-team)
                  nil)]
-    (when e-id (. state.state.teams target-team e-id))))
+    (when e-id
+      (let [ent (. state.state.teams target-team e-id)]
+        (when (not ent.dead) ent)))))
 
 (λ Unit.start-combat [self]
   (set self.targpos nil)
@@ -261,12 +305,12 @@
 
 (λ Unit.do-ability [self]
   (match self.def.ability
-    :push
-    (do
-      (self:do-aoe :push))
-    _ (let [e (self:get-random-target)]
-        (when e
-          (self:shoot-enemy e)))))
+    :push (self:do-aoe :push)
+    :snipe
+    (let [target (self:get-random-target)]
+      (when target
+        (state.state.director:direct-damage 1 self target)))
+    :shoot (self:fire-projectile (polar-vec2 (* 2 math.pi (math.random)) 1))))
 
 (λ Unit.float-ability-update [self dt]
   (when (> self.timers.ability.t (or self.def.ability-speed 2))
@@ -323,6 +367,9 @@
 (local min-velocity 200)
 (local max-velocity 1200)
 (λ Unit.time-update [self dt]
+  (when (and state.state.combat-started (> self.spinner-count 0))
+    (self:check-spinners))
+  (set self.spin-t (+ self.spin-t dt))
   (self:update-eyes dt)
   (when (<= self.unit.hp 0)
     (set self.dead true))
@@ -344,11 +391,14 @@
 
 (set Unit.__defaults
      {:z-index 10
+      :spinner-count 0
+      :spin-t 0
       :__timers
       {:spawn {:t 0 :active true}
        :move-tick {:t 0 :active true :random true}
        :ability {:t 0 :active true :random true}
        :blink {:t 0 :active true :random true}}
+      :spinner-radius 90
       :pos (vec 32 32)
       :team :player})
 
