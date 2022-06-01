@@ -184,7 +184,8 @@
    :options [[:basic-1 :basic-1 :basic-1 :basic-2 :basic-1 :brute
               :basic-1 :basic-2]]}
   {:type :combat
-   :options [[:basic-1 :basic-1 :basic-2 :basic-2 :basic-2 :basic-1 :brute :brute :brute]]}
+   :options [[:basic-1 :basic-1 :basic-2 :basic-2
+              :basic-2 :basic-1 :brute :brute :brute]]}
   {:type :combat
    :options [[:boss-1 :basic-1 :basic-1]]}
   {:type :upgrade}
@@ -192,12 +193,13 @@
    :options [[:boss-1 :brute :basic-2 :basic-2]]}
   {:type :combat
    :options [[:boss-1 :brute :basic-2 :basic-2
-              :basic-1 :basic-1 :basic-1 :basic-1 :basic-1 :basic-1 :basic-1 :basic-1
+              :basic-1 :basic-1 :basic-1 :basic-1
+              :basic-1 :basic-1 :basic-1 :basic-1
               :basic-1 :basic-1 :basic-1]]}
   {:type :upgrade}
   {:type :combat
    :options [[:boss-1 :brute :basic-2 :basic-2
-              :basic-2 :basic-2 :basic-1 :brute-1
+              :basic-2 :basic-2 :basic-1 :brute
               :basic-1 :basic-1 :basic-1 :basic-1
               :basic-2 :basic-2 :basic-2]]}
   {:type :win}]}

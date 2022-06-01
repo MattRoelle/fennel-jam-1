@@ -13,8 +13,8 @@
       (false msg) (print mode-name "activate error" msg))))
 
 (fn love.load [args]
-  (set-mode :mode-intro)
-  (when (~= :web (. args 1)) (repl.start)))
+  (set-mode :mode-intro))
+  ;(when (~= :web (. args 1)) (repl.start)))
 
 (fn safely [f]
   (xpcall f #(set-mode :error-mode mode-name $ (fennel.traceback))))
