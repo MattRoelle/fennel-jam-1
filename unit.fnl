@@ -61,7 +61,6 @@
   (if (= :player self.team)
     (set state.state.unit-count (+ state.state.unit-count 1))
     (set state.state.enemy-count (+ state.state.enemy-count 1)))
-  (set self.bump-force (or self.def.bump-force 64))
   (self:gen-eyes)
   (set self.box2d
        (new-entity
@@ -76,7 +75,7 @@
          :pos self.pos
          :body-type :dynamic
          :angular-damping (or self.def.angular-damping 2)
-         :linear-damping (or self.def.linear-damping 0.5)
+         ;:linear-damping (or self.def.linear-damping 0)
          :mass (or self.def.mass 1)
          :restitution (or self.def.restitution 0.99)
          :category (if (= self.team :player)
@@ -281,6 +280,7 @@
     (self.box2d.body:applyLinearImpulse iv.x iv.y)))
 
 (λ Unit.bump-update [self dt]
+  (do (lua :return))
   (when (and (> self.timers.move-tick.t (or self.def.bump-timer 1.75)))
     (set self.timers.move-tick.t 0)
     (let [e (self:get-random-target)]
@@ -288,6 +288,7 @@
         (self:bump-enemy e)))))
 
 (λ Unit.enemy-ai-update [self dt]
+  (do (lua :return))
   (when (or (not self.target) self.target.dead)
     (let [e (self:get-random-target)]
       (set self.target e)))
@@ -307,21 +308,19 @@
 
 (λ Unit.time-update [self dt]
   (self:update-eyes dt)
-  (let [angle (self.box2d.body:getAngle)
-        f (* dt 1000)]
-    (self.box2d.body:applyForce (* f (math.cos angle))
-                                (* f (math.sin angle))))
   (when (<= self.unit.hp 0)
     (set self.dead true))
   ;;(self:look-velocity-dir dt)
+
+  (when (= :player self.team)
+    (self:bump-update dt))
   (if self.targpos
     (self.box2d.body:setPosition self.targpos.x self.targpos.y)
     (match (or self.def.ai-type :bump)
       :basic (self:enemy-ai-update dt)
-      :bump (self:bump-update dt)
+      ;:bump (self:bump-update dt)
       :shoot (self:float-ability-update dt)
-      :float-ability (self:float-ability-update dt)
-      :random-shoot (self:shoot-update dt))))
+      :float-ability (self:float-ability-update dt))))
 
 (set Unit.__defaults
      {:z-index 10

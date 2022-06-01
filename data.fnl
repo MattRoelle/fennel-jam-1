@@ -3,6 +3,7 @@
  {:bumper
   {:tier 1 
    :ai-type :bump
+   :ability :bump
    :classes [:fighter]
    :hp 30
    :bump-damage 10
@@ -11,9 +12,11 @@
    :mass 5
    :bump-force 256
    :color :bumper
+   :defense 1
    :bump-timer 2}
   :healer
   {:tier 1 
+   :defense 1
    :ai-type :float-ability
    :ability :heal
    :classes [:support]
@@ -26,24 +29,26 @@
    :mass 5
    :color :healer
    :attack-speed 2.5}
-  :pusher
-  {:tier 1 
-   :ai-type :float-ability
-   :ability :push
-   :classes [:fighter]
-   :hp 30
-   :bump-damage 10
-   :shape-type :polygon
-   :points [-12 4 -12 -12 0 -12 10 0 0 12]
-   :radius 16
-   :linear-damping 0.001
-   :mass 5
-   :color :bumper
-   :bump-force 256
-   :bump-timer 2
-   :attack-speed 1.5}
+ ;:pusher
+ ;{:tier 1 
+ ; :defense 1
+ ; :ai-type :float-ability
+ ; :ability :push
+ ; :classes [:fighter]
+ ; :hp 30
+ ; :bump-damage 10
+ ; :shape-type :polygon
+ ; :points [-12 4 -12 -12 0 -12 10 0 0 12]
+ ; :radius 16
+ ; :linear-damping 0.001
+ ; :mass 5
+ ; :color :bumper
+ ; :bump-force 256
+ ; :bump-timer 2
+ ; :attack-speed 1.5}
   :shooter
   {:tier 1
+   :defense 1
    :ai-type :float-ability
    :ability :shoot
    :color :shooter

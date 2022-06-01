@@ -85,9 +85,9 @@
       (state.state.director:sell-unit props.unit))
     (when hovering?
       (set state.state.hover-unit
-           {:unit-type props.unit.type
-            :t (+ state.state.time 0.05)
-            :level props.unit.level}))
+           (lume.merge
+            props.unit
+            {:t (+ state.state.time 0.05)})))
     (graphics.rectangle context.position context.size
                         (if bstate.hover
                             (rgba 0.4 0.4 0.4 1)
@@ -121,7 +121,7 @@
     (set bstate.hover hovering?)
     (when hovering?
       (set state.state.hover-unit
-           {:unit-type (. state.state.shop-row props.index :unit-type)
+           {:type (. state.state.shop-row props.index :unit-type)
             :t (+ state.state.time 0.05)
             :level 1})
       (set state.state.hover-shop-btn bstate))

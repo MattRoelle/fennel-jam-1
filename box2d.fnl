@@ -57,7 +57,7 @@
     (set self.size (vec (- r l) (- b t)))))
 
 (set Box2dEntity.__defaults
-     {:linear-damping 0.9
+     {:linear-damping 0
       :restituion 0})
 
 (local Box2dRectangle (setmetatable {} Box2dEntity))

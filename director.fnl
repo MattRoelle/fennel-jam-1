@@ -7,7 +7,7 @@
 (local graphics (require :graphics))
 (local lume (require :lib.lume))
 (local input (require :input))
-(local {: new-entity : get-id} (require :helpers))
+(local {: new-entity : get-id : calc-stats} (require :helpers))
 (local {: Box2dCircle : Box2dRectangle} (require :box2d))
 (local ecs (require :ecs))
 (local state (require :state))
@@ -49,23 +49,29 @@
                 (imm-stateful button upgrade [:bstate]
                               {:label :Choose
                                :on-click #(state.state.director:choose-upgrade upgrade)})]])]]]))]])
-          
 
 (λ tooltip []
   [view {:display :absolute}
-    (let [unit-type
+    (let [unit
           (if (> (or (?. state.state :hover-unit :t) 0) state.state.time)
-              state.state.hover-unit.unit-type)
+              state.state.hover-unit)
           sz (vec 400 80)]
-      (when unit-type 
-        (let [copy (get-copy-str :en :units unit-type)]
+      (when unit
+        (let [copy (get-copy-str :en :units unit.type)
+              stats (calc-stats unit)]
           [[view {:display :flex
                   :position (+ (vec 0 80) (- center-stage (/ sz 2)))
                   :size sz
                   :color (rgba 0 0 0 1)
                   :padding (vec 4 4)}
-             [[text {:text copy :color (rgba 1 1 1 1)}]]]])))])
 
+            [[view {:display :flex
+                    :flex-direction :column}
+              [[text {:text (.. "HP:" stats.hp) :color (rgba 1 1 1 1)}]
+               [text {:text (.. "Defense: " stats.defense) :color (rgba 1 1 1 1)}]
+               [text {:text (.. "Bump DMG: " stats.bump-damage) :color (rgba 1 1 1 1)}]
+               [text {:text (.. "Ability: " stats.ability) :color (rgba 1 1 1 1)}]]]
+             [text {:text copy :color (rgba 1 1 1 1)}]]]])))])
 (λ upgrade-list []
   [view {:display :stack
          :position (vec 10 10)
