@@ -694,6 +694,10 @@
   (each [k v (pairs state.state.destroy-after-combat)]
     (set v.dead true))
   (set state.state.destroy-after-combat {})
+  (effects.text-flash
+    (.. "VICTORY")
+    (/ stage-size 2)
+    (rgba 1 1 0 1))
   (each [team teamlist (pairs state.state.teams)]
     (each [_ unit (pairs teamlist)]
       (unit:pop)
