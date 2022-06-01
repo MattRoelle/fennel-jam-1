@@ -18,12 +18,11 @@
     ret))
 
 (λ calc-stats [unit]
-  (print :ut unit.type)
   (let [def (. data.unit-types unit.type)]
     {:hp (or unit.max-hp def.hp)
      :defense def.defense
      :ability def.ability
-     :bump-damage def.bump-damage}))
+     :damage def.damage}))
 
 {: new-entity
  : get-mouse-position

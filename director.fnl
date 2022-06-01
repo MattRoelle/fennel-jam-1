@@ -69,9 +69,9 @@
                     :flex-direction :column}
               [[text {:text (.. "HP:" stats.hp) :color (rgba 1 1 1 1)}]
                [text {:text (.. "Defense: " stats.defense) :color (rgba 1 1 1 1)}]
-               [text {:text (.. "Bump DMG: " stats.bump-damage) :color (rgba 1 1 1 1)}]
-               [text {:text (.. "Ability: " stats.ability) :color (rgba 1 1 1 1)}]]]
+               [text {:text (.. "DMG: " stats.damage) :color (rgba 1 1 1 1)}]]]
              [text {:text copy :color (rgba 1 1 1 1)}]]]])))])
+
 (λ upgrade-list []
   [view {:display :stack
          :position (vec 10 10)
@@ -112,7 +112,7 @@
             :direction :down}
       (when (> state.state.unit-count 0)
         (icollect [ix unit (ipairs state.state.team-state)]
-          [view {:size (vec (- arena-margin.x 10) 40)
+          [view {:size (vec (- arena-margin.x 10) 44)
                  :display :stack
                  :padding (vec 0 2)
                  :direction :right}
@@ -164,18 +164,29 @@
 (local Director {})
 (set Director.__index Director)
 
+(λ Director.do-buff [self ea eb]
+  (print :buffing)
+  (match ea.unit.type
+    :healer (eb:heal ea.unit.level)))
+
+(λ Director.friendly-bump [self ea eb col]
+  (when state.state.combat-started
+    (when (or (self:do-buff ea eb)
+              (self:do-buff eb ea))
+      (self:screen-shake))))
+
 (λ Director.attack-bump [self ea eb col]
   (self:screen-shake)
   (let [(nx ny) (col:getNormal)
         angle (math.atan2 ny nx)
-        cos (math.cos angle)
-        sin (math.sin angle)
+        c (math.cos angle)
+        s (math.sin angle)
         f 1000000]
     (self:brief-pause)
-    (ea:take-dmg eb.def.bump-damage)
-    (eb:take-dmg ea.def.bump-damage)
-    (ea.box2d.body:applyLinearImpulse (* f cos) (* f sin))
-    (ea.box2d.body:applyLinearImpulse (* (- f) cos) (* (- f) sin))))
+    (ea:take-dmg eb.def.damage)
+    (eb:take-dmg ea.def.damage)
+    (ea.box2d.body:applyLinearImpulse (* f c) (* f s))
+    (ea.box2d.body:applyLinearImpulse (* (- f) c) (* (- f) s))))
 
 (λ Director.bullet-hit [self bullet target]
   (target:take-dmg bullet.bullet.dmg)
@@ -193,12 +204,15 @@
             (values :bump-player-enemy ea eb)
             (and (= eb.team :player) (= ea.team :enemy))
             (values :bump-player-enemy eb ea)
+            (and (= ea.team :player) (= eb.team :player))
+            (values :bump-player-player ea eb)
             (and eb.wall ea.bullet)
             (values :bullet-wall ea nil)
             (and ea.wall eb.bullet)
             (values :bullet-wall eb nil))]
     (match collision-type
       :bullet-wall (set A.dead true)
+      :bump-player-player (self:friendly-bump A B col)
       :bump-player-enemy (self:attack-bump A B col)
       :player-bullet-to-enemy (self:bullet-hit A B))))
 
@@ -206,7 +220,7 @@
 (λ Director.begin-contact [self a b col]
   (let [ea (state.get-entity-by-id (a:getUserData))
         eb (state.get-entity-by-id (b:getUserData))]
-    (when (and ea eb)
+    (when (and ea eb state.state.combat-started)
       (self:process-collision ea eb col))))
 
 (λ Director.end-contact [self a b col])
@@ -387,24 +401,12 @@
   (set state.state.money (+ state.state.money v)))
 
 (λ Director.spawn-enemy-group [self pos group]
-  (fire-timeline
-    (local img {: pos
-                :id (tostring (get-id))
-                :z-index 100
-                :__timers {:spawn {:t 0 :active true}}
-                :arena-draw-fg
-                (λ [self]
-                  (when (= 0 (% (math.floor (* self.timers.spawn.t 10)) 2))
-                    (graphics.image aseprite.warn self.pos)))})
-    (tiny.addEntity ecs.world img)
-    (timeline.wait 1)
-    (each [_ enemy-type (ipairs group)]
-      (let [def (. data.enemy-types enemy-type)
-            unit {:hp def.hp
-                  :type enemy-type}]
-        (tiny.addEntity ecs.world
-                        (new-entity Unit {: pos : unit :team :enemy}))))
-    (set img.dead true)))
+  (each [_ enemy-type (ipairs group)]
+    (let [def (. data.enemy-types enemy-type)
+          unit {:hp def.hp
+                :type enemy-type}]
+      (tiny.addEntity ecs.world
+                      (new-entity Unit {: pos : unit :team :enemy})))))
 
 (λ Director.choose-upgrade [self upgrade]
   (set state.state.upgrade-screen-open? false)
@@ -434,6 +436,18 @@
              (tset acc class-type (+ 1 (. acc class-type))))
            acc))))
 
+(λ Director.spawn-addtl [self pos team group]
+  (self:screen-shake)
+  (self:muzzle-flash pos)
+  (each [_ unit-type (ipairs group)]
+    (let [def (. data.unit-types unit-type)]
+      (tiny.addEntity ecs.world
+                      (new-entity Unit
+                                  {: pos
+                                   : team
+                                   :unit {:hp def.hp
+                                          :type unit-type}})))))
+
 (λ Director.purchase [self index]
   (let [shop-item (. state.state.shop-row index)]
     (when (>= state.state.money shop-item.cost)
@@ -443,8 +457,8 @@
             unit {:type shop-item.unit-type
                   :level 1
                   :max-hp def.hp
-                  :id (get-id)
-                  :hp def.hp}
+                  :hp def.hp
+                  :id (get-id)}
             ent (tiny.addEntity ecs.world
                                 (new-entity Unit {:pos (/ arena-size 2)
                                                   : unit}))]
@@ -534,18 +548,21 @@
 (λ text-flash [s pos color ?font])
 
 (λ Director.line-up-units [self]
-  (each [ix unit (ipairs state.state.team-state)]
-    (let [ent (state.get-entity-by-id unit.entity-id)]
+  (each [_ team (ipairs [:player :enemy])]
+    (var ix 0)
+    (each [k ent (pairs (. state.state.teams team))]
+      (set ix (+ ix 1))
       (set ent.targpos (ent:get-body-pos))
-      (print :ent ent)
-      (fire-timeline
-       (let [x (% ix 4)
-             y (math.floor (/ ix 4))]
-         (timeline.tween 1 ent
-                         {:targpos (+ (vec 50 50)
-                                      (* 24 (vec x y)))}
-                         :outQuad))
-       (set ent.targpos nil))))
+      (let [root (if (= team :player)
+                     (vec 50 50)
+                     (- arena-size (vec 130 130)))
+            x (% ix 4)
+            y (math.floor (/ ix 4))]
+        (fire-timeline
+          (timeline.tween 1 ent
+                          {:targpos (+ root
+                                       (* 24 (vec x y)))}
+                          :outQuad)))))
   (timeline.wait 1))
 
 (λ Director.do-shop-phase [self]
@@ -668,9 +685,10 @@
           (self:restore-unit-state)
           (self:do-shop-phase)
           (self:pre-combat-animation)
-          (self:line-up-units)
           (self:spawn-enemies group-options waves)
-          (timeline.wait 1.5)
+          (timeline.wait 0.5)
+          (self:line-up-units)
+          (timeline.wait 1)
           (self:start-combat)
           (timeline.wait 2)
           (self:start-walls)

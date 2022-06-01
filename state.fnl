@@ -22,7 +22,7 @@
           :phase :shop
           :display-level 1
           :level 1
-          :money 100
+          :money 10
           :enemy-count 0
           :upgrades {}
           :upgrade-choices {}

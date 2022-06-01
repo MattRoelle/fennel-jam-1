@@ -25,6 +25,16 @@
   (let [(x y) (self.box2d.body:getPosition)]
     (vec x y)))
 
+(λ Unit.heal [self v]
+  (set self.unit.hp (+ self.unit.hp v))
+  (effects.text-flash (.. "+" v)
+                      (+ (- (self:get-body-pos) (vec 4 0))
+                         (vec (love.math.random -10 10)
+                              (love.math.random -10 10)))
+                      (rgba 0 1 0 1)
+                      assets.f32)
+  (self:flash (rgba 0 1 0 1)))
+
 (λ Unit.take-dmg [self v]
   (set self.unit.hp (- self.unit.hp v))
   (effects.text-flash (.. "-" v)
@@ -37,13 +47,14 @@
                       assets.f32)
   (self:flash))
 
-(λ Unit.flash [self]
+(λ Unit.flash [self ?color]
   (when self.flash-timline
     (self.flash-timeline:cancel))
   (set self.flash-timeline
        (fire-timeline
         (set self.scale (vec 1.3 1.3))
         (set self.flashing true)
+        (set self.flash-color (or ?color (rgba 1 1 1 1)))
         (timeline.tween 0.2 self {:scale (vec 1 1)} :outQuad)
         (set self.flashing false)
         (set self.scale (vec 1 1)))))
@@ -77,7 +88,8 @@
          :angular-damping (or self.def.angular-damping 2)
          ;:linear-damping (or self.def.linear-damping 0)
          :mass (or self.def.mass 1)
-         :restitution (or self.def.restitution 0.99)
+         :linear-damping 0
+         :restitution 1
          :category (if (= self.team :player)
                      "00000001"
                      "00000010")
@@ -145,7 +157,7 @@
         p (vec x y)
         c
         (if self.flashing
-            (rgba 1 1 1 1)
+            self.flash-color
             (self:get-unit-color))]
     (love.graphics.push)
     (love.graphics.translate x y)
@@ -222,11 +234,11 @@
     (when e-id (. state.state.teams target-team e-id))))
 
 (λ Unit.start-combat [self]
+  (set self.targpos nil)
   (let [angle (if (= :player self.team)
                   (* (/ 1 4) math.pi)
                   (* (/ 5 4) math.pi))
         f 200]
-    (print :starting)
     (self.box2d.body:applyLinearImpulse (* f (math.cos angle)) (* f (math.sin angle)))))
 
 (λ Unit.do-aoe [self effect]
@@ -257,13 +269,17 @@
           (self:shoot-enemy e)))))
 
 (λ Unit.float-ability-update [self dt]
-  (when (> self.timers.ability.t (or self.def.attack-speed 2))
+  (when (> self.timers.ability.t (or self.def.ability-speed 2))
     (set self.timers.ability.t 0)
     (when state.state.combat-started
       (self:do-ability))))
 
 (λ Unit.destroy [self]
   (effects.box2d-explode (self:get-body-pos) 5 4 (rgba 1 1 1 1))
+  (when state.state.combat-started
+    (match self.unit.type
+      :spawner (state.state.director:spawn-addtl (self:get-pos) :player
+                                                 [:lildoink :lildoink :lildoink])))
   (self.box2d.body:destroy)
   (if (= :player self.team)
     (set state.state.unit-count (- state.state.unit-count 1))
@@ -280,7 +296,6 @@
     (self.box2d.body:applyLinearImpulse iv.x iv.y)))
 
 (λ Unit.bump-update [self dt]
-  (do (lua :return))
   (when (and (> self.timers.move-tick.t (or self.def.bump-timer 1.75)))
     (set self.timers.move-tick.t 0)
     (let [e (self:get-random-target)]
@@ -288,11 +303,10 @@
         (self:bump-enemy e)))))
 
 (λ Unit.enemy-ai-update [self dt]
-  (do (lua :return))
   (when (or (not self.target) self.target.dead)
     (let [e (self:get-random-target)]
       (set self.target e)))
-  (when (and (> self.timers.move-tick.t (or self.def.bump-timer 1.75)))
+  (when (> self.timers.move-tick.t (or self.def.bump-timer 1.75))
     (set self.timers.move-tick.t 0)
     (when self.target
       (self:bump-enemy self.target))))
@@ -306,20 +320,26 @@
     ;(when (> (+ (* vx vx) (* vy vy)) 0.1)
     ; (self.box2d.body:applyAngularImpulse (* -64 dt da)))))
 
+(local min-velocity 200)
+(local max-velocity 1200)
 (λ Unit.time-update [self dt]
   (self:update-eyes dt)
   (when (<= self.unit.hp 0)
     (set self.dead true))
   ;;(self:look-velocity-dir dt)
 
-  (when (= :player self.team)
-    (self:bump-update dt))
+  ;; clamp velocity
+  (let [(velx vely) (self.box2d.body:getLinearVelocity)
+        v (vec velx vely)]
+    (v:clamp-length! min-velocity max-velocity)
+    (self.box2d.body:setLinearVelocity v.x v.y))
+    
   (if self.targpos
     (self.box2d.body:setPosition self.targpos.x self.targpos.y)
     (match (or self.def.ai-type :bump)
-      :basic (self:enemy-ai-update dt)
+      :enemy (self:enemy-ai-update dt)
       ;:bump (self:bump-update dt)
-      :shoot (self:float-ability-update dt)
+      ;:shoot (self:float-ability-update dt)
       :float-ability (self:float-ability-update dt))))
 
 (set Unit.__defaults

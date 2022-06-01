@@ -92,11 +92,15 @@
                         (if bstate.hover
                             (rgba 0.4 0.4 0.4 1)
                             (rgba 0.2 0.2 0.2 1)))
-    (graphics.rectangle (+ context.position (vec 0 20)) (vec context.size.x 10)
+    (graphics.rectangle (+ context.position (vec 0 24))
+                        (vec (/ context.size.x 2) 12)
                         (rgba 0 0 0 1))
-    (graphics.rectangle (+ context.position (vec 0 20))
-                        (vec (* context.size.x (/ props.unit.hp props.unit.max-hp))
-                             10)
+    (graphics.rectangle (+ context.position (vec (/ context.size.x 2) 24))
+                        (vec (/ context.size.x 2) 12)
+                        (rgba 1 1 1 1))
+    (graphics.rectangle (+ context.position (vec 0 24))
+                        (vec (* (/ context.size.x 2) (/ props.unit.hp props.unit.max-hp))
+                             12)
                         (rgba 1 0 0 1))
     (set props.unit.hovering hovering?)
     (let [r (get-layout-rect context)]
@@ -107,9 +111,13 @@
         assets.f16 (- r.center (vec 0 8))
         (rgba 1 1 1 1))
       (graphics.print-centered
-        (.. props.unit.hp "/" props.unit.max-hp)
-        assets.f16 (+ r.center (vec 0 8))
-        (rgba 1 1 1 1)))))
+        props.unit.hp
+        assets.f16 (+ r.center (vec -30 13))
+        (rgba 1 1 1 1))
+      (graphics.print-centered
+        "10"
+        assets.f16 (+ r.center (vec 30 13))
+        (rgba 0 0 0 1)))))
 
 (λ shop-button [?state context props]
   "An immediate mode button"
