@@ -1,12 +1,12 @@
 {:upgrades
- {:shop+ {}
-  :gold+ {}
-  :reroll+ {}
-  :bump+ {}
-  :ability+ {}
-  :heal+ {}
-  :shoot+ {}
-  :spawn+ {}}
+ {:shop! {}
+  :gold! {}
+  :reroll! {}
+  :bump! {}
+  :ability-dmg! {}
+  :heal! {}
+  :shoot! {}
+  :spawn! {}}
  :unit-types
  ;; tier 99, spawns
  {:lildoink

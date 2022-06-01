@@ -26,7 +26,11 @@
     (vec x y)))
 
 (λ Unit.heal [self v]
-  (set self.unit.hp (+ self.unit.hp v))
+  (set self.unit.hp (+ self.unit.hp
+                       v
+                       (if (and (= :player self.team)
+                                state.state.upgrades.heal!)
+                           1 0)))
   (effects.text-flash (.. "+" v)
                       (+ (- (self:get-body-pos) (vec 4 0))
                          (vec (love.math.random -10 10)

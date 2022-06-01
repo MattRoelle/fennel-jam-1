@@ -129,10 +129,11 @@
     (graphics.rectangle (+ context.position (vec (/ context.size.x 2) 24))
                         (vec (/ context.size.x 2) 12)
                         (rgba 1 1 1 1))
-    (graphics.rectangle (+ context.position (vec 0 24))
-                        (vec (* (/ context.size.x 2) (/ props.unit.hp props.unit.max-hp))
-                             12)
-                        (rgba 1 0 0 1))
+    (when (> props.unit.hp 0)
+      (graphics.rectangle (+ context.position (vec 0 24))
+                          (vec (* (/ context.size.x 2) (/ props.unit.hp props.unit.max-hp))
+                               12)
+                          (rgba 1 0 0 1)))
     (set props.unit.hovering hovering?)
     (let [r (get-layout-rect context)]
       (graphics.print-centered
@@ -142,7 +143,7 @@
         assets.f16 (- r.center (vec 0 8))
         (rgba 1 1 1 1))
       (graphics.print-centered
-        props.unit.hp
+        (if (= 0 props.unit.hp) :DEAD props.unit.hp)
         assets.f16 (+ r.center (vec -30 13))
         (rgba 1 1 1 1))
       (graphics.print-centered

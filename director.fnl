@@ -93,15 +93,19 @@
 
 (λ upgrade-list []
   [view {:display :stack
-         :position (vec 100 10)
+         :position (vec 225 5)
          :size (vec arena-margin.x stage-size.y)
          :padding (vec 4 4)}
    [[view {:display :stack
            :direction :right}
      (icollect [k v (pairs state.state.upgrades)]
-       [text {:size (vec 50 20)
-              :text k
-              :color (rgba 0 0 0 1)}])]]])
+       [view {:size (vec 110 20)
+              :display :flex}
+        [[view {:size (vec 100 20)
+                :display :flex
+                :color (rgba 0 0 0 1)}
+          [[text {:text k
+                  :color (rgba 1 1 1 1)}]]]]])]]])
 
 (λ class-list []
   [view {:display :stack
@@ -234,6 +238,9 @@
 
 (λ Director.calc-dmg [self ent]
   (+ ent.unit.damage
+     (if (and (= :player ent.team)
+              state.state.upgrades.bump!)
+         1 0)
      (match (. (or ent.def.classes []) 1)
        :bumper (* state.state.class-synergies.bumpers.level 2)
        _ 0)))
@@ -253,7 +260,8 @@
     (ea.box2d.body:applyLinearImpulse (* (- f) c) (* (- f) s))))
 
 (λ Director.bullet-hit [self bullet target]
-  (target:take-dmg bullet.bullet.dmg)
+  (target:take-dmg (+ bullet.bullet.dmg
+                      (if state.state.upgrades.ability-dmg! 1 0)))
   (self:screen-shake)
   (self:brief-pause)
   (set bullet.dead true))
@@ -324,9 +332,13 @@
   (self:clamp-shop))
 
 (λ Director.buy-roll-shop [self]
-  (when (> state.state.money 0)
-    (set state.state.money (- state.state.money 1))
-    (self:roll-shop)))
+  (let [free? (and (= 0 state.state.shop-rolls)
+                   state.state.upgrades.reroll!)]
+    (when (or free? (> state.state.money 0))
+      (set state.state.shop-rolls (+ state.state.shop-rolls 1))
+      (when (not free?)
+        (set state.state.money (- state.state.money 1)))
+      (self:roll-shop))))
 
 (λ Director.get-shop-tier [self] 1)
   ;(if (> state.state.level 4) 2 1))
@@ -341,7 +353,7 @@
 (λ Director.roll-shop [self]
   (set state.state.shop-row [])
   (fire-timeline
-   (for [i 1 5]
+   (for [i 1 (if state.state.upgrades.shop! 6 5)]
      (let [u (self:generate-shop-unit)]
        (table.insert state.state.shop-row
                        {:cost 3 :unit-type u :label u}))
@@ -500,7 +512,7 @@
   (self:screen-shake)
   (self:brief-pause)
   (self:connect ent target)
-  (target:take-dmg v)
+  (target:take-dmg (+ v (if state.state.upgrades.ability-dmg! 1 0)))
   (ent:flash (rgba 1 1 0 1)))
 
 (λ Director.sell-unit [self unit]
@@ -664,9 +676,12 @@
     (set state.state.arena-mpos mpos)))
 
 (λ Director.open-upgrade-screen [self]
-  (set state.state.upgrade-choices
-       [{:upgrade :atk-speed-up}
-        {:upgrade :bump-dmg-up}])
+  (local choices [])
+  (while (< (length choices) 2)
+    (let [choice (lume.randomchoice (lume.keys data.upgrades))]
+      (when (not (. state.state.upgrades choice))
+        (table.insert choices {:upgrade choice}))))
+  (set state.state.upgrade-choices choices)
   (set state.state.upgrade-screen-open? true))
 
 (λ Director.restore-unit-state [self]
@@ -733,7 +748,10 @@
   (timeline.wait 1))
 
 (λ Director.do-shop-phase [self]
-  (self:add-gold (+ 10 (or (?. state.state.class-synergies :traders :level) 0)))
+  (set state.state.shop-rolls 0)
+  (self:add-gold (+ 10
+                    (if state.state.upgrades.gold! 2 0)
+                    (or (?. state.state.class-synergies :traders :level) 0)))
   (fire-timeline
    (timeline.wait 0.25)
    (each [_ unit (ipairs state.state.team-state)]
