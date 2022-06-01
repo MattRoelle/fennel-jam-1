@@ -1,10 +1,10 @@
 VERSION=0.1.0
 LOVE_VERSION=11.4
-NAME=change-me
+NAME="DOINK!"
 ITCH_ACCOUNT=change-me-too
 URL=https://gitlab.com/alexjgriffith/min-love2d-fennel
-AUTHOR="Your Name"
-DESCRIPTION="Minimal setup for trying out Phil Hagelberg's fennel/love game design process."
+AUTHOR="Matt Roelle"
+DESCRIPTION="Fennel jam 1 entry"
 GITHUB_USERNAME := $(shell grep GITHUB_USERNAME credentials.private | cut -d= -f2)
 GITHUB_PAT := $(shell grep GITHUB_PAT credentials.private | cut -d= -f2)
 LIBS := $(wildcard lib/*)

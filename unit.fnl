@@ -109,7 +109,6 @@
   (self:on-class-change))
 
 (λ Unit.on-class-change [self]
-  (print :occ self.unit.type (?. state.state.class-synergies :spawners :level))
   (match self.unit.type
     :spinner
     (set self.spinner-count

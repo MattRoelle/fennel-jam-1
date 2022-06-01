@@ -219,7 +219,6 @@
         s (math.sin angle)
         f 1000000]
     (self:brief-pause)
-    (print :ea-eb ea.unit.type ea.unit.damage eb.unit.type eb.unit.damage)
     (ea:take-dmg (self:calc-dmg eb))
     (eb:take-dmg (self:calc-dmg ea))
     (ea.box2d.body:applyLinearImpulse (* f c) (* f s))
@@ -463,7 +462,6 @@
           unit {:hp def.hp
                 :damage def.damage
                 :type enemy-type}]
-      (print :pos pos)
       (tiny.addEntity
        ecs.world
        (new-entity Unit
@@ -871,7 +869,6 @@
   ;; Main game loop
   (while (not state.state.game-over?)
     (coroutine.yield)
-    (print :level state.state.level)
     (let [level-def (assert (. data.levels state.state.level)
                             "Error loading level")]
       (match level-def
