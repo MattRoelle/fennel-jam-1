@@ -47,6 +47,21 @@
     (timeline.wait 1)
     (set txt.dead true)))
 
+(λ arena-circle-aoe [pos r color]
+  (fire-timeline
+    (local ent {: pos
+                :id (tostring (get-id))
+                :z-index 0
+                :__timers {:spawn {:t 0 :active true}}
+                :arena-draw-fg
+                (λ [self]
+                  (graphics.circle pos r (rgba color.r color.g color.b 0.25))
+                  (graphics.stroke-circle pos r 6 (rgba 1 1 1 1)))})
+                  ;(graphics.stroke-circle pos r 4 color)
+    (tiny.addEntity ecs.world ent)
+    (timeline.wait 1)
+    (set ent.dead true)))
+
 (λ box2d-explode [pos count r color]
   (for [i 1 count]
     (let [p (+ pos (polar-vec2 (* 2 math.pi (math.random)) r))
@@ -60,6 +75,8 @@
                 :body-type :dynamic
                 :linear-damping 0
                 :mass 0.5
+                :arena-draw
+                #($1:draw-world-points color)
                 :category "10000000"
                 :mask "10000000"
                 :size (vec 4 4)
@@ -73,4 +90,5 @@
 
 {: text-flash
  : screen-text-flash
- : box2d-explode}
+ : box2d-explode
+ : arena-circle-aoe}

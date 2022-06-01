@@ -13,6 +13,7 @@
          {:screen-scale (vec 1 1)
           :screen-offset (vec 0 0)
           :time-scale 1
+          :combat-started false
           :team-state []
           :class-synergies {}
           :muzzle-flashes {}

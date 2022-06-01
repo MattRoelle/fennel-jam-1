@@ -95,6 +95,7 @@
 (λ Unit.get-unit-color [self]
   (match self.def.color
     :enemy (hexcolor :b13253ff)
+    :healer (hexcolor :baabf7ff)
     :bumper (hexcolor :ef7d57ff)
     :shooter (hexcolor :38b764ff)
     :support (hexcolor :41a6f6ff)
@@ -193,23 +194,20 @@
         iv (polar-vec2 (+ angle wobble) 3)]
     (self:fire-projectile iv)))
 
+(λ Unit.get-allies-in-range [self r]
+  (let [(x y) (self.box2d.body:getPosition)]
+    (icollect [k v (pairs (. state.state.teams (if (= :player self.team) :player :enemy)))]
+      (let [(x2 y2) (v.box2d.body:getPosition)]
+        (when (< (: (vec x y) :distance-to (vec x2 y2)) r)
+          v)))))
+
 (λ Unit.get-enemies-in-range [self r]
   (let [(x y) (self.box2d.body:getPosition)]
-    (icollect [k v (pairs state.state.teams.enemy)]
+    (icollect [k v (pairs (. state.state.teams (if (= :player self.team) :enemy :player)))]
       (let [(x2 y2) (v.box2d.body:getPosition)]
-        (when (< (: (vec x y) :distance-to (vec x2 y2))
-                 (or self.pulse-radius 70))
+        (when (< (: (vec x y) :distance-to (vec x2 y2)) r)
           v)))))
           
-(λ Unit.pulse-update [self dt]
-  (when (> self.timers.shoot-tick.t 0.25)
-    (let [in-range (self:get-enemies-in-range (* 1.1 (or self.pulse-radius 70)))]
-      (when (> (length in-range) 0)
-        (set self.timers.shoot-tick.t 0)
-        (each [_ e (ipairs in-range)]
-          (when e
-            (self:shoot-enemy e)))))))
-
 (λ Unit.random-move-update [self dt]
   (when (> self.timers.move-tick.t 2)
     (set self.timers.move-tick.t 0)
@@ -224,15 +222,46 @@
                  nil)]
     (when e-id (. state.state.teams target-team e-id))))
 
-(λ Unit.shoot-update [self dt]
-  (when (> self.timers.shoot-tick.t (or self.def.fire-rate 2))
-    (set self.timers.shoot-tick.t 0)
-    (when (> state.state.enemy-count 0)
-      (if (= :random-shoot self.def.ai-type)
-          (self:fire-projectile (polar-vec2 (* 2 math.pi (math.random)) 1))
-          (let [e (self:get-random-target)]
-            (when e
-              (self:shoot-enemy e)))))))
+(λ Unit.start-combat [self]
+  (let [angle (if (= :player self.team)
+                  (* (/ 1 4) math.pi)
+                  (* (/ 5 4) math.pi))
+        f 200]
+    (print :starting)
+    (self.box2d.body:applyLinearImpulse (* f (math.cos angle)) (* f (math.sin angle)))))
+
+(λ Unit.do-aoe [self effect]
+  (self:flash)
+  (let [r 100
+        units-in-range (self:get-enemies-in-range r)]
+    (each [_ ent (ipairs units-in-range)]
+      (match effect
+        :push
+        (let [pos (self:get-pos)
+              p2 (ent:get-pos)
+              angle (pos:angle-to p2)]
+          (ent:flash)
+          (set ent.timers.move-tick.t 0)
+          (ent.box2d.body:setLinearVelocity 0 0)
+          (ent.box2d.body:applyLinearImpulse (* 300 (math.cos angle))
+                                             (* 300 (math.sin angle))))))
+    (state.state.director:brief-pause)
+    (effects.arena-circle-aoe (self:get-pos) r (self:get-unit-color))))
+
+(λ Unit.do-ability [self]
+  (match self.def.ability
+    :push
+    (do
+      (self:do-aoe :push))
+    _ (let [e (self:get-random-target)]
+        (when e
+          (self:shoot-enemy e)))))
+
+(λ Unit.float-ability-update [self dt]
+  (when (> self.timers.ability.t (or self.def.attack-speed 2))
+    (set self.timers.ability.t 0)
+    (when state.state.combat-started
+      (self:do-ability))))
 
 (λ Unit.destroy [self]
   (effects.box2d-explode (self:get-body-pos) 5 4 (rgba 1 1 1 1))
@@ -290,7 +319,8 @@
     (match (or self.def.ai-type :bump)
       :basic (self:enemy-ai-update dt)
       :bump (self:bump-update dt)
-      :shoot (self:shoot-update dt)
+      :shoot (self:float-ability-update dt)
+      :float-ability (self:float-ability-update dt)
       :random-shoot (self:shoot-update dt))))
 
 (set Unit.__defaults
@@ -298,7 +328,7 @@
       :__timers
       {:spawn {:t 0 :active true}
        :move-tick {:t 0 :active true :random true}
-       :shoot-tick {:t 0 :active true :random true}
+       :ability {:t 0 :active true :random true}
        :blink {:t 0 :active true :random true}}
       :pos (vec 32 32)
       :team :player})

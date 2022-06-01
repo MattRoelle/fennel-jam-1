@@ -101,19 +101,18 @@
          :position (vec (- stage-size.x arena-margin.x) (/ arena-margin.y 2))
          :size (vec arena-margin.x stage-size.y)
          :padding (vec 4 4)}
-   (when (= :shop state.state.phase)
-     [[view {:color (rgba 0.5 0.3 0.3 0)
-             :display :stack
-             :direction :down}
-       (when (> state.state.unit-count 0)
-         (icollect [ix unit (ipairs state.state.team-state)]
-           [view {:size (vec (- arena-margin.x 10) 40)
-                  :display :stack
-                  :padding (vec 0 2)
-                  :direction :right}
-            [(imm-stateful unit-display unit [:display]
-                           {: unit
-                            :size (vec (- arena-margin.x 10) 32)})]]))]])])
+    [[view {:color (rgba 0.5 0.3 0.3 0)
+            :display :stack
+            :direction :down}
+      (when (> state.state.unit-count 0)
+        (icollect [ix unit (ipairs state.state.team-state)]
+          [view {:size (vec (- arena-margin.x 10) 40)
+                 :display :stack
+                 :padding (vec 0 2)
+                 :direction :right}
+           [(imm-stateful unit-display unit [:display]
+                          {: unit
+                           :size (vec (- arena-margin.x 10) 32)})]]))]]])
 
 (λ money-display []
   [view {:display :stack
@@ -437,6 +436,7 @@
       (let [def (. data.unit-types shop-item.unit-type)
             unit {:type shop-item.unit-type
                   :level 1
+                  :max-hp def.hp
                   :id (get-id)
                   :hp def.hp}
             ent (tiny.addEntity ecs.world
@@ -483,7 +483,7 @@
 
 (λ Director.restore-unit-state [self]
   (each [_ unit (pairs state.state.team-state)]
-    (set unit.hp (. data.unit-types unit.type :hp))
+    (set unit.hp unit.max-hp)
     (let [ent (tiny.addEntity ecs.world
                               (new-entity Unit
                                           {:pos (/ arena-size 2)
@@ -564,8 +564,7 @@
     (for [i 1 wave.groups]
       (let [grp (lume.randomchoice group-options)]
         (self:spawn-enemy-group
-         (vec (* (/ 3 4) arena-size.x)
-              (/ arena-size.y 2))
+         (* 0.9 arena-size)
          grp)))))
 
 (λ Director.start-walls [self]
@@ -636,6 +635,13 @@
   (timeline.wait 1)
   (self.reset-game))
 
+(λ Director.start-combat [self]
+  (set state.state.combat-started true)
+  (each [_ unit (pairs state.state.teams.player)]
+    (unit:start-combat))
+  (each [_ unit (pairs state.state.teams.enemy)]
+    (unit:start-combat)))
+
 (λ Director.main-timeline [self]
   ;; TODO: SAUCE
   ;; (set state.state.referee
@@ -658,6 +664,8 @@
           (self:pre-combat-animation)
           (self:line-up-units)
           (self:spawn-enemies group-options waves)
+          (timeline.wait 1.5)
+          (self:start-combat)
           (timeline.wait 2)
           (self:start-walls)
           (while (and (> state.state.unit-count 0)
@@ -671,6 +679,7 @@
             (coroutine.yield))))
 
       (self:reset-walls)
+      (set state.state.combat-started false)
 
       (when (and (> state.state.unit-count 0)
                  (= :combat level-def.type))
