@@ -4,7 +4,7 @@
 (local graphics (require :graphics))
 (local {: rgba : hexcolor} (require :color))
 (local lume (require :lib.lume))
-(local {: new-entity} (require :helpers))
+(local {: new-entity : get-class-color} (require :helpers))
 (local {: Box2dCircle : Box2dRectangle : Box2dPolygon} (require :box2d))
 (local state (require :state))
 (local data (require :data))
@@ -101,19 +101,16 @@
     (self.box2d.body:applyLinearImpulse iv.x iv.y))
   (let [(x y) (self.box2d.body:getPosition)]
     (state.state.director:muzzle-flash (vec x y)))
+  (self:on-class-change))
+
+(λ Unit.on-class-change [self]
+  (print :occ self.unit.type (?. state.state.class-synergies :spawners :level))
   (match self.unit.type
-    :spinner (set self.spinner-count 5)))
-
-
-(λ Unit.get-unit-color [self]
-  (match self.def.color
-    :enemy (hexcolor :b13253ff)
-    :healer (hexcolor :baabf7ff)
-    :bumper (hexcolor :ef7d57ff)
-    :shooter (hexcolor :38b764ff)
-    :merchant (hexcolor :a8b734ff)
-    :support (hexcolor :41a6f6ff)
-    _ (rgba 1 1 1 1)))
+    :spinner
+    (set self.spinner-count
+         (+ self.unit.level
+            state.state.class-synergies.spawners.level))))
+                                        
 
 (λ Unit.pop [self]
   (fire-timeline
@@ -160,10 +157,17 @@
     (+ (self:get-pos)
        (polar-vec2 theta self.spinner-radius))))
 
+(λ Unit.get-unit-color [self]
+  (get-class-color (if (= self.team :enemy)
+                       :enemy
+                       (= self.unit.type :lildoink)
+                       :lildoink
+                       (. self.def.classes 1))))
+
 (λ Unit.draw-spinners [self]
   (for [i 1 self.spinner-count]
     (let [p (self:get-spinner-position i)]
-      (graphics.circle p 5 (self:get-unit-color)))))
+      (graphics.circle p 5 (get-class-color (self:get-unit-color))))))
 
 (λ Unit.check-spinners [self]
   (for [i 1 self.spinner-count]
@@ -200,7 +204,8 @@
                self.unit.hovering)
       (graphics.stroke-circle (vec x y) 32 4 (rgba 1 1 1 1)))
     (self:draw-spinners)
-    (when (and (= :player self.team) (> self.unit.level 1))
+    (when (and (= :player self.team)
+               (> (or self.unit.level 0) 1))
       (graphics.image aseprite.star (- p (vec 15 15))
                       (if (= self.unit.level 2)
                           (vec 0.5 0.5)
@@ -315,13 +320,35 @@
     (do
       (self:flash)
       (state.state.director:brief-pause)
-      (state.state.director:spawn-object (self:get-pos) :bomb))
+      (let [bomb-count (+ self.unit.level
+                          state.state.class-synergies.spawners.level)]
+        (for [i 1 bomb-count]
+          (state.state.director:spawn-object
+           (+ (self:get-pos)
+              (if (= bomb-count 1)
+                  (vec 0 0)
+                  (< bomb-count 3)
+                  (vec (love.math.random -30 30)
+                       (love.math.random -30 30))
+                  (vec (love.math.random -50 50)
+                       (love.math.random -50 50))))
+           :bomb))))
     :snipe
-    (let [target (self:get-random-target)]
-      (when target
-        (state.state.director:direct-damage 1 self target)))
+    (let [count (+ self.unit.level
+                   state.state.class-synergies.shooters.level)]
+      (fire-timeline
+       (for [i 1 count]
+         (let [target (self:get-random-target)]
+           (when target
+             (state.state.director:direct-damage 1 self target)))
+         (timeline.wait 0.15))))
     :shoot
-    (self:fire-projectile (polar-vec2 (* 2 math.pi (math.random)) 1))))
+    (let [count (+ self.unit.level
+                   state.state.class-synergies.shooters.level)]
+      (fire-timeline
+        (for [i 1 count]
+          (self:fire-projectile (polar-vec2 (* 2 math.pi (math.random)) 1))
+          (timeline.wait 0.15))))))
 
 (λ Unit.float-ability-update [self dt]
   (when (> self.timers.ability.t (or self.def.ability-speed 2))
@@ -333,8 +360,10 @@
   (effects.box2d-explode (self:get-body-pos) 5 4 (rgba 1 1 1 1))
   (when state.state.combat-started
     (match self.unit.type
-      :spawner (state.state.director:spawn-addtl (self:get-pos) :player
-                                                 [:lildoink :lildoink :lildoink])))
+      :spawner
+      (state.state.director:spawn-addtl (self:get-pos) :player :lildoink
+                                        (+ (match self.unit.level 1 2 2 4 3 6)
+                                           state.state.class-synergies.spawners.level))))
   (self.box2d.body:destroy)
   (if (= :player self.team)
     (set state.state.unit-count (- state.state.unit-count 1))

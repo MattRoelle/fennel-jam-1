@@ -1,8 +1,18 @@
-{:unit-types
+{:upgrades
+ {:shop+ {}
+  :gold+ {}
+  :reroll+ {}
+  :bump+ {}
+  :ability+ {}
+  :heal+ {}
+  :shoot+ {}
+  :spawn+ {}}
+ :unit-types
  ;; tier 99, spawns
  {:lildoink
   {:tier 99 
    :defense 1
+   :classes [:spawner]
    :hp 10
    :damage 1
    :shape-type :circle
@@ -16,29 +26,29 @@
    :defense 1
    :hp 50
    :damage 3
-   :classes [:merchant]
+   :classes [:traders]
    :shape-type :circle
    :radius 20
    :mass 5
    :color :merchant
    :bump-timer 2}
-  :trader
+  :shopkeeper
   {:tier 1 
    :defense 1
    :hp 50
    :damage 3
-   :classes [:merchant]
+   :classes [:traders]
    :shape-type :circle
    :radius 20
    :mass 5
    :color :merchant
    :bump-timer 2}
-  :bumper
+  :fighter
   {:tier 1 
    :defense 1
    :hp 50
    :damage 3
-   :classes [:fighter]
+   :classes [:bumpers]
    :shape-type :circle
    :radius 20
    :mass 5
@@ -49,7 +59,7 @@
    :defense 1
    :hp 50
    :damage 3
-   :classes [:fighter]
+   :classes [:spawners]
    :shape-type :circle
    :radius 16
    :mass 5
@@ -62,7 +72,7 @@
    :damage 1
    :mass 1
    :ability-speed 2.5
-   :classes [:support]
+   :classes [:spawners]
    :shape-type :polygon
    :points [-12 0 -12 -12 0 -12 18 18]
    :color :healer}
@@ -73,7 +83,7 @@
    :damage 1
    :mass 1
    :ability-speed 2.5
-   :classes [:support]
+   :classes [:supporters]
    :shape-type :polygon
    :points [-12 4 -12 -12 0 -12 10 0 0 12]
    :color :healer}
@@ -86,7 +96,7 @@
    :ai-type :float-ability
    :ability :drop-bomb
    :color :shooter
-   :classes [:shooter]
+   :classes [:spawners]
    :points [-10 0 -10 -10 0 -10 10 0 10 10 0 10]
    :linear-damping 0.001
    :range 0.7
@@ -101,7 +111,7 @@
    :ai-type :float-ability
    :ability :snipe
    :color :shooter
-   :classes [:shooter]
+   :classes [:shooters]
    :points [-10 0 -10 -10 0 -10 10 0 10 10 0 10]
    :linear-damping 0.001
    :range 0.7
@@ -116,7 +126,7 @@
    :ai-type :float-ability
    :ability :shoot
    :color :shooter
-   :classes [:shooter]
+   :classes [:shooters]
    :points [-10 0 -10 -10 0 -10 10 0 10 10 0 10]
    :linear-damping 0.001
    :range 0.7
@@ -135,7 +145,11 @@
           :bump-force 128
           :ai-type :enemy}}
  :levels
- [{:type :combat
+ [{:type :upgrade}
+  {:type :upgrade}
+  {:type :upgrade}
+  {:type :upgrade}
+  {:type :combat
    :group-options [[:basic] [:basic :basic :basic]]
    :waves [{:groups 2}]}
   {:type :upgrade}

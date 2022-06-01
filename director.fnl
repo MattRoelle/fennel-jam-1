@@ -13,7 +13,7 @@
 (local state (require :state))
 (local {: layout : get-layout-rect} (require :imgui))
 (local aabb (require :aabb))
-(local {: text : view : image : shop-button : button : unit-display} (require :imm))
+(local {: text : view : image : shop-button : button : unit-display : class-display} (require :imm))
 (local {: stage-size : center-stage : arena-margin : arena-offset : arena-size} (require :constants))
 (local {: new-entity : get-mouse-position} (require :helpers))
 (local {: Unit} (require :unit))
@@ -52,39 +52,56 @@
                               {:label :Choose
                                :on-click #(state.state.director:choose-upgrade upgrade)})]])]]]))]])
 
+(λ class-tooltip [class-info sz]
+  (let [copy class-info.class-type]
+    [[view {:display :flex
+            :position (+ (vec 0 80) (- center-stage (/ sz 2)))
+            :size sz
+            :color (rgba 0 0 0 1)
+            :padding (vec 4 4)}
+
+      [[text {:text copy :color (rgba 1 1 1 1)}]]]]))
+
+(λ unit-tooltip [unit sz]
+  (let [copy (get-copy-str :en :units unit.type)
+        stats (calc-stats unit)]
+    [[view {:display :flex
+            :position (+ (vec 0 80) (- center-stage (/ sz 2)))
+            :size sz
+            :color (rgba 0 0 0 1)
+            :padding (vec 4 4)}
+
+      [[view {:display :flex
+              :flex-direction :column}
+        [[text {:text (.. "HP:" stats.hp) :color (rgba 1 1 1 1)}]
+         [text {:text (.. "Defense: " stats.defense) :color (rgba 1 1 1 1)}]
+         [text {:text (.. "DMG: " stats.damage) :color (rgba 1 1 1 1)}]]]
+       [text {:text copy :color (rgba 1 1 1 1)}]]]]))
+
 (λ tooltip []
   [view {:display :absolute}
-    (let [unit
+    (let [(tooltip-type v)
           (if (> (or (?. state.state :hover-unit :t) 0) state.state.time)
-              state.state.hover-unit)
+              (values :unit state.state.hover-unit)
+              (> (or (?. state.state :hover-class :t) 0) state.state.time)
+              (values :class state.state.hover-class))
           sz (vec 400 80)]
-      (when unit
-        (let [copy (get-copy-str :en :units unit.type)
-              stats (calc-stats unit)]
-          [[view {:display :flex
-                  :position (+ (vec 0 80) (- center-stage (/ sz 2)))
-                  :size sz
-                  :color (rgba 0 0 0 1)
-                  :padding (vec 4 4)}
-
-            [[view {:display :flex
-                    :flex-direction :column}
-              [[text {:text (.. "HP:" stats.hp) :color (rgba 1 1 1 1)}]
-               [text {:text (.. "Defense: " stats.defense) :color (rgba 1 1 1 1)}]
-               [text {:text (.. "DMG: " stats.damage) :color (rgba 1 1 1 1)}]]]
-             [text {:text copy :color (rgba 1 1 1 1)}]]]])))])
+      (when v
+        (if (= tooltip-type :unit)
+            (unit-tooltip v sz)
+            (class-tooltip v sz))))])
 
 (λ upgrade-list []
   [view {:display :stack
-         :position (vec 10 10)
+         :position (vec 100 10)
          :size (vec arena-margin.x stage-size.y)
          :padding (vec 4 4)}
    [[view {:display :stack
-           :direction :down}
+           :direction :right}
      (icollect [k v (pairs state.state.upgrades)]
-       [text {:size (vec 80 20)
-              :text (.. k ": " (tostring v))
-              :color (rgba 1 1 1 1)}])]]])
+       [text {:size (vec 50 20)
+              :text k
+              :color (rgba 0 0 0 1)}])]]])
 
 (λ class-list []
   [view {:display :stack
@@ -95,14 +112,13 @@
      [[view {:color (rgba 0.5 0.3 0.3 0)
              :display :stack
              :direction :down}
-       (icollect [class-type n (pairs state.state.class-synergies)]
-         [view {:size (vec (- arena-margin.x 10) 40)
+       (icollect [class-type info (pairs state.state.class-synergies)]
+         [view {:size (vec (- arena-margin.x 10) 54)
                 :display :flex}
-          [[view {:size (vec (- arena-margin.x 10) 32)
-                  :display :flex
-                  :color (rgba 0 0 0 1)}
-            [[text {:text (.. class-type " - " n)
-                    :color (rgba 1 1 1 1)}]]]]])]])])
+           [(imm-stateful class-display state.state.class-synergies [class-type]
+                          {: class-type
+                           :size (vec (- arena-margin.x 10) 44)
+                           :count info.count})]])]])])
 
 (λ unit-list []
   [view {:display :stack
@@ -133,7 +149,18 @@
              :font assets.f32      
              :color (rgba 0 0 0 1)}])]])
 
-(λ top-row []
+(λ team-count-display []
+  [view {:display :stack
+         :direction :right
+         :position (vec (- stage-size.x 120) 0)
+         :padding (vec 8 0)
+         :size (vec 100 30)}
+   [(when state.state.started
+      [text {:text (.. (length state.state.team-state) " / 10")
+             :font assets.f32
+             :color (rgba 0 0 0 1)}])]])
+
+(λ level-display []
   [view {:display :stack
          :direction :right
          :position (vec (- stage-size.x 320) 0)
@@ -167,7 +194,6 @@
 (set Director.__index Director)
 
 (λ Director.do-buff [self ea eb]
-  (print :buffing)
   (match ea.unit.type
     :healer (eb:heal ea.unit.level)))
 
@@ -183,7 +209,6 @@
     (set eb.spinner-invin (+ state.state.time 0.5))
     (self:screen-shake)
     (self:brief-pause)
-    (print :spinner-col)
     (eb:take-dmg 1)))
 
 (λ Director.get-units-in-range [self team pos r]
@@ -207,6 +232,12 @@
         (each [_ unit (ipairs in-range)]
           (unit:take-dmg 3))))))
 
+(λ Director.calc-dmg [self ent]
+  (+ ent.unit.damage
+     (match (. (or ent.def.classes []) 1)
+       :bumper (* state.state.class-synergies.bumpers.level 2)
+       _ 0)))
+
 (λ Director.attack-bump [self ea eb col]
   (self:screen-shake)
   (let [(nx ny) (col:getNormal)
@@ -216,8 +247,8 @@
         f 1000000]
     (self:brief-pause)
     (print :ea-eb ea.unit.type ea.unit.damage eb.unit.type eb.unit.damage)
-    (ea:take-dmg eb.unit.damage)
-    (eb:take-dmg ea.unit.damage)
+    (ea:take-dmg (self:calc-dmg eb))
+    (eb:take-dmg (self:calc-dmg ea))
     (ea.box2d.body:applyLinearImpulse (* f c) (* f s))
     (ea.box2d.body:applyLinearImpulse (* (- f) c) (* (- f) s))))
 
@@ -419,7 +450,8 @@
         (class-list)
         (unit-list)
         (money-display)
-        (top-row)
+        (level-display)
+        (team-count-display)
         (shop-row)
         (upgrade-screen)
         (tooltip)]]])
@@ -468,7 +500,6 @@
   (self:screen-shake)
   (self:brief-pause)
   (self:connect ent target)
-  (print :dd)
   (target:take-dmg v)
   (ent:flash (rgba 1 1 0 1)))
 
@@ -504,20 +535,29 @@
          (do
            (each [_ class-type (ipairs (. data.unit-types unit.type :classes))]
              (when (not (. acc class-type))
-               (tset acc class-type 0))
-             (tset acc class-type (+ 1 (. acc class-type))))
-           acc))))
+               (tset acc class-type {:count 0}))
+             (tset acc class-type {:count (+ 1 (. acc class-type :count))})
+             (tset acc class-type :level (if (<= 6 (. acc class-type :count)) 3
+                                             (<= 4 (. acc class-type :count)) 2
+                                             (<= 2 (. acc class-type :count)) 1
+                                             0)))
+           acc)))
+  (fire-timeline
+   (timeline.wait 0.25)
+   (each [_ ent (pairs state.state.teams.player)]
+     (ent:on-class-change))))
 
-(λ Director.spawn-addtl [self pos team group]
+(λ Director.spawn-addtl [self pos team unit-type count]
   (self:screen-shake)
   (self:muzzle-flash pos)
-  (each [_ unit-type (ipairs group)]
+  (for [i 1 count]
     (let [def (. data.unit-types unit-type)]
       (tiny.addEntity ecs.world
                       (new-entity Unit
                                   {: pos
                                    : team
                                    :unit {:hp def.hp
+                                          :damage def.damage
                                           :type unit-type}})))))
 
 (λ Director.merge-units [self a b]
@@ -552,6 +592,7 @@
                                           : unit}))]
      (set unit.entity-id ent.id)
      (table.insert state.state.team-state unit)
+     (self:calc-classes)
      (self:check-do-merges unit)
      (effects.text-flash "LEVEL UP"
                          (/ arena-size 2)
@@ -571,6 +612,8 @@
                 (self:merge-units ea eb)))))))
 
 (λ Director.purchase [self index]
+  (when (>= (length state.state.team-state) 10)
+    (do (lua :return)))
   (let [shop-item (. state.state.shop-row index)]
     (when (>= state.state.money shop-item.cost)
       (set state.state.money (- state.state.money shop-item.cost))
@@ -690,7 +733,7 @@
   (timeline.wait 1))
 
 (λ Director.do-shop-phase [self]
-  (self:add-gold 10)
+  (self:add-gold (+ 10 (or (?. state.state.class-synergies :traders :level) 0)))
   (fire-timeline
    (timeline.wait 0.25)
    (each [_ unit (ipairs state.state.team-state)]

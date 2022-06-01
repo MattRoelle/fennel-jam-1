@@ -5,11 +5,12 @@
 (local {: vec : polar-vec2} (require :vector))
 (local {: rgba : hexcolor} (require :color))
 (local graphics (require :graphics))
-(local {: new-entity : get-mouse-position} (require :helpers))
+(local {: new-entity : get-mouse-position : get-class-color} (require :helpers))
 (local aabb (require :aabb))
 (local input (require :input))
 (local assets (require :assets))
 (local timeline (require :timeline))
+(local data (require :data))
 
 (λ text [context props]
   "Basic text component"
@@ -76,6 +77,36 @@
     (love.graphics.pop)
     bstate))
 
+(λ class-display [?state context props]
+  (assert props.class-type "Must pass class-type")
+  (assert props.count "Must pass count")
+  (let [bstate (or ?state {:hover false})
+        (mouse-down? hovering?) (mouse-interaction context)]
+    (set bstate.hover hovering?)
+    (when hovering?
+      (set state.state.hover-class
+           {:class-type props.class-type
+            :count props.count
+            :t (+ state.state.time 0.05)}))
+    (graphics.rectangle context.position context.size
+                        (if bstate.hover
+                            (rgba 0.4 0.4 0.4 1)
+                            (rgba 0.2 0.2 0.2 1)))
+    (let [r (get-layout-rect context)]
+      (graphics.print-centered
+        props.class-type
+        assets.f16 (- r.center (vec 0 8))
+        (rgba 1 1 1 1))
+      (for [i 1 6]
+        (graphics.circle (+ r.center
+                            (vec -54 9)
+                            (vec (* i 16) 0))
+                         6
+                         (if (>= props.count i)
+                             (get-class-color props.class-type)
+                             (rgba 0 0 0 1)))))
+    bstate))
+
 (λ unit-display [?state context props]
   (assert props.unit "Must pass unit")
   (let [bstate (or ?state {:hover false})
@@ -90,8 +121,8 @@
             {:t (+ state.state.time 0.05)})))
     (graphics.rectangle context.position context.size
                         (if bstate.hover
-                            (rgba 0.4 0.4 0.4 1)
-                            (rgba 0.2 0.2 0.2 1)))
+                            (rgba 0 0 0 1)
+                            (get-class-color (. data.unit-types props.unit.type :classes 1))))
     (graphics.rectangle (+ context.position (vec 0 24))
                         (vec (/ context.size.x 2) 12)
                         (rgba 0 0 0 1))
@@ -107,7 +138,7 @@
       (graphics.print-centered
         (if hovering?
            "SELL"
-           (.. "Lv. " props.unit.level " " props.unit.type))
+           (.. props.unit.type " *"props.unit.level))
         assets.f16 (- r.center (vec 0 8))
         (rgba 1 1 1 1))
       (graphics.print-centered
@@ -117,7 +148,8 @@
       (graphics.print-centered
         props.unit.damage
         assets.f16 (+ r.center (vec 30 13))
-        (rgba 0 0 0 1)))))
+        (rgba 0 0 0 1)))
+    bstate))
 
 (λ shop-button [?state context props]
   "An immediate mode button"
@@ -158,5 +190,6 @@
  : image
  : view
  : shop-button
+ : class-display
  : unit-display
  : button}
