@@ -84,7 +84,7 @@
    :damage 1
    :mass 1
    :ai-type :float-ability
-   :ability :snipe
+   :ability :drop-bomb
    :color :shooter
    :classes [:shooter]
    :points [-10 0 -10 -10 0 -10 10 0 10 10 0 10]

@@ -52,11 +52,15 @@
 
 (λ index-system.onAdd [self e]
   (tset state.state.idmap e.id e)
+  (when e.destroy-after-combat
+    (tset state.state.destroy-after-combat e.id e))
   (when e.team
     (tset state.state :teams e.team e.id e)))
 
 (λ index-system.onRemove [self e]
   (tset state.state.idmap e.id nil)
+  (when e.destroy-after-combat
+    (tset state.state.destroy-after-combat e.id nil))
   (when e.team
     (tset state.state :teams e.team e.id nil)))
 

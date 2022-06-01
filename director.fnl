@@ -17,6 +17,7 @@
 (local {: stage-size : center-stage : arena-margin : arena-offset : arena-size} (require :constants))
 (local {: new-entity : get-mouse-position} (require :helpers))
 (local {: Unit} (require :unit))
+(local {: Object} (require :object))
 (local {: Referee} (require :referee))
 (local data (require :data))
 (local aseprite (require :aseprite))
@@ -183,6 +184,27 @@
     (self:screen-shake)
     (self:brief-pause)
     (eb:take-dmg 1)))
+
+(λ Director.get-units-in-range [self team pos r]
+  (icollect [k v (pairs (. state.state.teams
+                           (if (= :player team)
+                               :player
+                               :enemy)))]
+    (let [(x2 y2) (v.box2d.body:getPosition)]
+      (when (< (pos:distance-to (vec x2 y2)) r)
+        v))))
+
+(λ Director.object-collision [self obj target]
+  (set obj.dead true)
+  (match obj.object-type
+    :bomb
+    (do
+      (self:muzzle-flash obj.pos 3)
+      (self:screen-shake)
+      (self:brief-pause)
+      (let [in-range (self:get-units-in-range obj.target-team obj.pos 90)]
+        (each [_ unit (ipairs in-range)]
+          (unit:take-dmg 3))))))
 
 (λ Director.attack-bump [self ea eb col]
   (self:screen-shake)
@@ -422,6 +444,11 @@
   (tset state.state.upgrades upgrade.upgrade
         (+ (or (. state.state.upgrades upgrade.upgrade) 0) 1)))
 
+(λ Director.spawn-object [self pos object-type]
+  (tiny.addEntity ecs.world
+                  (new-entity Object {: object-type
+                                      :pos (pos:clone)})))
+
 (λ Director.connect [self a b]
   (fire-timeline
    (local line {:z-index 10
@@ -554,6 +581,9 @@
   (self:screen-shake))
 
 (λ Director.play-win-level-sequence [self]
+  (each [k v (pairs state.state.destroy-after-combat)]
+    (set v.dead true))
+  (set state.state.destroy-after-combat {})
   (local spin-in
          {:z-index 20000
           :t 0

@@ -27,6 +27,7 @@
           :enemy-count 0
           :upgrades {}
           :upgrade-choices {}
+          :destroy-after-combat {}
           :idmap {}
           :units
           (collect [k _ (pairs data.unit-types)]

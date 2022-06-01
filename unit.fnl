@@ -306,11 +306,17 @@
 (λ Unit.do-ability [self]
   (match self.def.ability
     :push (self:do-aoe :push)
+    :drop-bomb
+    (do
+      (self:flash)
+      (state.state.director:brief-pause)
+      (state.state.director:spawn-object (self:get-pos) :bomb))
     :snipe
     (let [target (self:get-random-target)]
       (when target
         (state.state.director:direct-damage 1 self target)))
-    :shoot (self:fire-projectile (polar-vec2 (* 2 math.pi (math.random)) 1))))
+    :shoot
+    (self:fire-projectile (polar-vec2 (* 2 math.pi (math.random)) 1))))
 
 (λ Unit.float-ability-update [self dt]
   (when (> self.timers.ability.t (or self.def.ability-speed 2))
