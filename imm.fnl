@@ -115,7 +115,7 @@
         assets.f16 (+ r.center (vec -30 13))
         (rgba 1 1 1 1))
       (graphics.print-centered
-        "10"
+        props.unit.damage
         assets.f16 (+ r.center (vec 30 13))
         (rgba 0 0 0 1)))))
 

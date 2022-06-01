@@ -127,11 +127,12 @@
  ;; :pulse {:ai-type :bump :hp 15 :damage 3 :linear-damping 0 :tier 2}}
  :enemy-types
  {:basic {:hp 30
+          :damage 2
+          :defense 0
           :shape-type :circle
           :radius [9 14]
           :color :enemy
           :bump-force 128
-          :damage 2
           :ai-type :enemy}}
  :levels
  [{:type :combat

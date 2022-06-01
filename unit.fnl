@@ -199,7 +199,12 @@
     (when (and (= :shop state.state.phase)
                self.unit.hovering)
       (graphics.stroke-circle (vec x y) 32 4 (rgba 1 1 1 1)))
-    (self:draw-spinners)))
+    (self:draw-spinners)
+    (when (and (= :player self.team) (> self.unit.level 1))
+      (graphics.image aseprite.star (- p (vec 15 15))
+                      (if (= self.unit.level 2)
+                          (vec 0.5 0.5)
+                          (vec 1 1))))))
 
 (λ Unit.random-update [self dt]
   (when (> 0.02 (math.random))

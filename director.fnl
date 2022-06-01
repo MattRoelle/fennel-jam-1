@@ -183,6 +183,7 @@
     (set eb.spinner-invin (+ state.state.time 0.5))
     (self:screen-shake)
     (self:brief-pause)
+    (print :spinner-col)
     (eb:take-dmg 1)))
 
 (λ Director.get-units-in-range [self team pos r]
@@ -214,8 +215,9 @@
         s (math.sin angle)
         f 1000000]
     (self:brief-pause)
-    (ea:take-dmg eb.def.damage)
-    (eb:take-dmg ea.def.damage)
+    (print :ea-eb ea.unit.type ea.unit.damage eb.unit.type eb.unit.damage)
+    (ea:take-dmg eb.unit.damage)
+    (eb:take-dmg ea.unit.damage)
     (ea.box2d.body:applyLinearImpulse (* f c) (* f s))
     (ea.box2d.body:applyLinearImpulse (* (- f) c) (* (- f) s))))
 
@@ -435,6 +437,7 @@
   (each [_ enemy-type (ipairs group)]
     (let [def (. data.enemy-types enemy-type)
           unit {:hp def.hp
+                :damage def.damage
                 :type enemy-type}]
       (tiny.addEntity ecs.world
                       (new-entity Unit {: pos : unit :team :enemy})))))
@@ -465,6 +468,7 @@
   (self:screen-shake)
   (self:brief-pause)
   (self:connect ent target)
+  (print :dd)
   (target:take-dmg v)
   (ent:flash (rgba 1 1 0 1)))
 
@@ -516,6 +520,56 @@
                                    :unit {:hp def.hp
                                           :type unit-type}})))))
 
+(λ Director.merge-units [self a b]
+   (self:brief-pause)
+   (self:screen-shake)
+   (self:connect a b)
+   (a:flash)
+   (b:flash)
+   (timeline.wait 0.25)
+   (set a.dead true)
+   (set b.dead true)
+   (set state.state.team-state
+        (icollect [_ unit (ipairs state.state.team-state)]
+          (when (and (not= unit.entity-id a.id)
+                     (not= unit.entity-id b.id))
+            unit)))
+   (let [hp (math.ceil (+ (math.max a.unit.max-hp b.unit.max-hp)
+                          (/ (+ a.unit.max-hp b.unit.max-hp) 4)))
+         dmg (math.ceil (+ (math.max a.unit.damage b.unit.damage)
+                           (/ (+ a.unit.damage b.unit.damage) 4)))
+         unit
+         (lume.merge
+          a.unit
+          b.unit
+          {:level (if (= a.unit.level 1) 2 3)
+           : hp
+           :max-hp hp
+           :damage dmg})
+         ent (tiny.addEntity ecs.world
+                             (new-entity Unit
+                                         {:pos (/ arena-size 2)
+                                          : unit}))]
+     (set unit.entity-id ent.id)
+     (table.insert state.state.team-state unit)
+     (self:check-do-merges unit)
+     (effects.text-flash "LEVEL UP"
+                         (/ arena-size 2)
+                         (rgba 1 1 1 1)
+                         assets.f32)))
+  
+(λ Director.check-do-merges [self unit]
+    (var merged false)
+    (each [_ u2 (ipairs state.state.team-state) :until merged]
+      (when (and (not= unit u2) (= unit.level u2.level) (= u2.type unit.type))
+        (set merged true)
+        (fire-timeline
+            (timeline.wait 0.3)
+            (let [ea (state.get-entity-by-id unit.entity-id)
+                  eb (state.get-entity-by-id u2.entity-id)]
+              (when (and ea eb)
+                (self:merge-units ea eb)))))))
+
 (λ Director.purchase [self index]
   (let [shop-item (. state.state.shop-row index)]
     (when (>= state.state.money shop-item.cost)
@@ -525,6 +579,7 @@
             unit {:type shop-item.unit-type
                   :level 1
                   :max-hp def.hp
+                  :damage def.damage
                   :hp def.hp
                   :id (get-id)}
             ent (tiny.addEntity ecs.world
@@ -532,10 +587,12 @@
                                                   : unit}))]
         (set unit.entity-id ent.id)
         (table.insert state.state.team-state unit)
-        (self:calc-classes))
-      (set state.state.shop-row
-           (icollect [ix si (ipairs state.state.shop-row)]
-             (when (not= index ix) si))))))
+        (set state.state.shop-row
+             (icollect [ix si (ipairs state.state.shop-row)]
+               (when (not= index ix) si)))
+        (self:calc-classes)
+        (self:check-do-merges unit)))))
+
 
 (λ Director.brief-pause [self]
   (when self.pause-timeline
